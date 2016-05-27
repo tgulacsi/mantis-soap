@@ -26,6 +26,10 @@ import (
 
 type Time time.Time
 
+func (t *Time) IsZero() bool {
+	return t == nil || time.Time(*t).IsZero()
+}
+
 const timePattern = time.RFC3339
 
 func (t *Time) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
