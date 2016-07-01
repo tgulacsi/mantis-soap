@@ -20,7 +20,6 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"io"
-	"log"
 	"time"
 )
 
@@ -70,31 +69,31 @@ type Reader struct {
 
 func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	e.EncodeToken(start)
-	var buf bytes.Buffer
-	//pr, pw := io.Pipe()
-	//go func() {
-	//w := base64.NewEncoder(base64.StdEncoding, pw)
-	//n, err := io.Copy(w, r.Reader)
-	w := base64.NewEncoder(base64.StdEncoding, &buf)
-	n, err := io.Copy(w, r.Reader)
-	log.Printf("copied %d (%v)", n, err)
-	if closeErr := w.Close(); closeErr != nil && err == nil {
-		err = closeErr
+	pr, pw := io.Pipe()
+	go func() {
+		var err error
+		defer pw.CloseWithError(err)
+		w := base64.NewEncoder(base64.StdEncoding, pw)
+		var n int64
+		n, err = io.Copy(w, r.Reader)
+		Log("msg", "copied", "bytes", n, "error", err)
+		if closeErr := w.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+	p := make([]byte, 4096)
+	var n int
+	var err error
+	for {
+		n, err = pr.Read(p)
+		Log("msg", "read", "bytes", n, "error", err)
+		if n > 0 {
+			e.EncodeToken(xml.CharData(p[:n]))
+		}
+		if err != nil {
+			break
+		}
 	}
-	//pw.CloseWithError(err)
-	//}()
-	//p := make([]byte, 4096)
-	//for {
-	//n, err := pr.Read(p)
-	//log.Printf("read %d (%v)", n, err)
-	p := buf.Bytes()
-	if n > 0 {
-		e.EncodeToken(xml.CharData(p[:n]))
-	}
-	//if err != nil {
-	//break
-	//}
-	//}
 	if closeErr := e.EncodeToken(start.End()); closeErr != nil && err == nil {
 		return closeErr
 	}

@@ -17,10 +17,6 @@ package mantis
 
 import (
 	"bytes"
-
-	"golang.org/x/net/context"
-	//"encoding/base64"
-
 	"encoding/xml"
 	"io"
 	"net/http"
@@ -28,8 +24,12 @@ import (
 
 	"gopkg.in/errgo.v1"
 
+	"golang.org/x/net/context"
+
 	"github.com/tgulacsi/go/soaphlp"
 )
+
+var Log = func(keyvals ...interface{}) error { return nil }
 
 func New(ctx context.Context, baseURL, username, password string) (Client, error) {
 	select {
