@@ -86,6 +86,23 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	return d.Decode(response)
 }
 
+func (c Client) ProjectGetUsers(ctx context.Context, projectID, access int) ([]AccountData, error) {
+	var resp ProjectGetUsersResponse
+	err := c.Call(ctx, "mc_project_get_users",
+		ProjectGetUsersRequest{Auth: c.auth, ProjectID: projectID, Access: access},
+		&resp,
+	)
+	return resp.Users, err
+}
+
+func (c Client) ProjectsGetUserAccessible(ctx context.Context) ([]ProjectData, error) {
+	var resp ProjectsGetUserAccessibleResponse
+	err := c.Call(ctx, "mc_projects_get_user_accessible",
+		ProjectsGetUserAccessibleRequest{Auth: c.auth},
+		&resp)
+	return resp.Projects, err
+}
+
 func (c Client) IssueUpdate(ctx context.Context, issueID int, issue IssueData) (bool, error) {
 	var resp IssueUpdateResponse
 	issue.ID = &issueID

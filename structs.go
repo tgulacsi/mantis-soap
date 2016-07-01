@@ -19,6 +19,28 @@ import "encoding/xml"
 
 // https://www.unosoft.hu/mantis/kobe/api/soap/mantisconnect.php?wsdl
 
+type ProjectGetUsersRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_users"`
+	Auth
+	ProjectID int `xml:"project_id"`
+	Access    int `xml:"access"`
+}
+
+type ProjectGetUsersResponse struct {
+	XMLName xml.Name      `xml:"http://futureware.biz/mantisconnect mc_project_get_usersResponse"`
+	Users   []AccountData `xml:"return>item"`
+}
+
+type ProjectsGetUserAccessibleRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_projects_get_user_accessible"`
+	Auth
+}
+
+type ProjectsGetUserAccessibleResponse struct {
+	XMLName  xml.Name      `xml:"http://futureware.biz/mantisconnect mc_projects_get_user_accessibleResponse"`
+	Projects []ProjectData `xml:"return>item"`
+}
+
 type IssueUpdateRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_update"`
 	Auth
@@ -199,4 +221,17 @@ type AccountData struct {
 	Name     string `xml:"name,omitempty"`
 	RealName string `xml:"real_name,omitempty"`
 	Email    string `xml:"email,omitempty"`
+}
+
+type ProjectData struct {
+	ID            int           `xml:"id,omitempty"`
+	Name          string        `xml:"name,omitempty"`
+	Status        *ObjectRef    `xml:"status,omitempty"`
+	Enabled       bool          `xml:"enabled,omitempy"`
+	ViewState     *ObjectRef    `xml:"view_state,omitempty"`
+	AccessMin     *ObjectRef    `xml:"access_min,omitempty"`
+	FilePath      string        `xml:"file_path,omitempty"`
+	Description   string        `xml:"description,omitempty"`
+	Subprojects   []ProjectData `xml:"subprojects>item,omitempty"`
+	InheritGlobal bool          `xml:"inherit_global,omitempty"`
 }
