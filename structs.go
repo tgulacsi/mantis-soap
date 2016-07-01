@@ -17,6 +17,8 @@ package mantis
 
 import "encoding/xml"
 
+// https://www.unosoft.hu/mantis/kobe/api/soap/mantisconnect.php?wsdl
+
 type IssueUpdateRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_update"`
 	Auth

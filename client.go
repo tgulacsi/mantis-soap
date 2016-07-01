@@ -22,11 +22,9 @@ import (
 	"net/http"
 	"sync"
 
-	"gopkg.in/errgo.v1"
-
-	"golang.org/x/net/context"
-
+	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/soaphlp"
+	"golang.org/x/net/context"
 )
 
 var Log = func(keyvals ...interface{}) error { return nil }
@@ -76,14 +74,14 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 
 	e := xml.NewEncoder(buf)
 	if err := e.Encode(request); err != nil {
-		return errgo.Notef(err, "marshal %#v", request)
+		return errors.Wrapf(err, "marshal %#v", request)
 	}
 	d, closer, err := c.caller.Call(ctx, method, bytes.NewReader(buf.Bytes()))
 	if closer != nil {
 		defer closer.Close()
 	}
 	if err != nil {
-		return errgo.Notef(err, buf.String())
+		return errors.Wrap(err, buf.String())
 	}
 	return d.Decode(response)
 }
