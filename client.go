@@ -115,6 +115,17 @@ func (c Client) IssueUpdate(ctx context.Context, issueID int, issue IssueData) (
 	return resp.Return, nil
 }
 
+func (c Client) IssueAdd(ctx context.Context, issue IssueData) (int, error) {
+	var resp IssueAddResponse
+	if err := c.Call(ctx, "mc_issue_add",
+		IssueAddRequest{Auth: c.auth, Issue: issue},
+		&resp,
+	); err != nil {
+		return 0, err
+	}
+	return resp.Return, nil
+}
+
 func (c Client) IssueAttachmentAdd(ctx context.Context, issueID int, name, fileType string, content io.Reader) (int, error) {
 	var resp IssueAttachmentAddResponse
 	if err := c.Call(ctx, "mc_issue_attachment_add",

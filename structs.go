@@ -41,6 +41,17 @@ type ProjectsGetUserAccessibleResponse struct {
 	Projects []ProjectData `xml:"return>item"`
 }
 
+type IssueAddRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_add"`
+	Auth
+	Issue IssueData `xml:"issue"`
+}
+
+type IssueAddResponse struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_addResponse"`
+	Return  int      `xml:"return"`
+}
+
 type IssueUpdateRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_update"`
 	Auth
@@ -89,10 +100,6 @@ type IssueGetResponse struct {
 	Return  IssueData `xml:"return"`
 }
 
-type IssueAddRequest struct {
-	XMLName xml.Name  `xml:"http://futureware.biz/mantisconnect mc_issue_add"`
-	Issue   IssueData `xml:"issue"`
-}
 type IssueExistsRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_exists"`
 	Auth
@@ -100,11 +107,6 @@ type IssueExistsRequest struct {
 }
 type IssueExistsResponse struct {
 	Return bool `xml:"return"`
-}
-
-type IssueAddResponse struct {
-	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_addResponse"`
-	Return  int      `xml:"return"`
 }
 
 type LoginRequest struct {
