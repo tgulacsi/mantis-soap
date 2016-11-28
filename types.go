@@ -21,6 +21,8 @@ import (
 	"encoding/xml"
 	"io"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type Time time.Time
@@ -76,9 +78,10 @@ func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 		w := base64.NewEncoder(base64.StdEncoding, pw)
 		var n int64
 		n, err = io.Copy(w, r.Reader)
+		err = errors.Wrap(err, "base64-encode")
 		Log("msg", "copied", "bytes", n, "error", err)
 		if closeErr := w.Close(); closeErr != nil && err == nil {
-			err = closeErr
+			err = errors.Wrap(closeErr, "close base64-encoder")
 		}
 	}()
 	p := make([]byte, 4096)
@@ -91,11 +94,16 @@ func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 			e.EncodeToken(xml.CharData(p[:n]))
 		}
 		if err != nil {
+			if err == io.EOF {
+				err = nil
+			}
 			break
 		}
 	}
 	if closeErr := e.EncodeToken(start.End()); closeErr != nil && err == nil {
-		return closeErr
+		return errors.Wrap(closeErr, "closing token")
 	}
 	return err
 }
+
+// vim: set fileencoding=utf-8 noet:

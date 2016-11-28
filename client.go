@@ -55,7 +55,7 @@ type doer interface {
 	Do(*http.Request) (*http.Response, error)
 }
 type caller interface {
-	Call(context.Context, string, io.Reader) (*xml.Decoder, io.Closer, error)
+	Call(ctx context.Context, method string, body io.Reader) (*xml.Decoder, io.Closer, error)
 }
 type Client struct {
 	caller
@@ -72,8 +72,7 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	buf := bufPool.Get()
 	defer bufPool.Put(buf)
 
-	e := xml.NewEncoder(buf)
-	if err := e.Encode(request); err != nil {
+	if err := xml.NewEncoder(buf).Encode(request); err != nil {
 		return errors.Wrapf(err, "marshal %#v", request)
 	}
 	d, closer, err := c.caller.Call(ctx, method, bytes.NewReader(buf.Bytes()))
@@ -83,7 +82,11 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	if err != nil {
 		return errors.Wrap(err, buf.String())
 	}
-	return d.Decode(response)
+	buf.Reset()
+	if err := d.Decode(response); err != nil {
+		return errors.Wrapf(err, "@%d", d.InputOffset())
+	}
+	return nil
 }
 
 func (c Client) ProjectGetUsers(ctx context.Context, projectID, access int) ([]AccountData, error) {
@@ -188,3 +191,5 @@ func (p *bufferPool) Put(b *bytes.Buffer) {
 	b.Reset()
 	p.Pool.Put(b)
 }
+
+// vim: set fileencoding=utf-8 noet:
