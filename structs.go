@@ -1,4 +1,4 @@
-// Copyright 2015 Tamás Gulácsi
+// Copyright 2016 Tamás Gulácsi
 //
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,19 @@ type ProjectGetUsersRequest struct {
 type ProjectGetUsersResponse struct {
 	XMLName xml.Name      `xml:"http://futureware.biz/mantisconnect mc_project_get_usersResponse"`
 	Users   []AccountData `xml:"return>item"`
+}
+
+type FilterSearchIssueIDsRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_filter_search_issue_ids"`
+	Auth
+	Filter     FilterSearchData `xml:"filter"`
+	PageNumber int              `xml:"page_number"`
+	PerPage    int              `xml:"per_page"`
+}
+
+type FilterSearchIssueIDsResponse struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_filter_search_issue_idsResponse"`
+	IDs     []int    `xml:"return>item"`
 }
 
 type ProjectsGetUserAccessibleRequest struct {
@@ -168,6 +181,45 @@ type IssueData struct {
 	Tags                  []ObjectRef        `xml:"tags>item,omitempty"`
 }
 
+type FilterSearchData struct {
+	ProjectID      []int               `xml:"project_id,omitempty"`
+	Search         string              `xml:"search,omitempty"`
+	Category       []string            `xml:"category,omitempty"`
+	SeverityID     []int               `xml:"severity_id,omitempty"`
+	StatusID       []int               `xml:"status_id,omitempty"`
+	PriorityID     []int               `xml:"priority_id,omitempty"`
+	ReporterID     []int               `xml:"reporter_id,omitempty"`
+	HandlerID      []int               `xml:"handler_id,omitempty"`
+	NoteUserID     []int               `xml:"note_user_id,omitempty"`
+	ResolutionID   []int               `xml:"resolution_id,omitempty"`
+	ProductVersion []string            `xml:"product_version,omitempty"`
+	UserMonitorID  []int               `xml:"user_monitor_id,omitempty"`
+	HideStatusID   []int               `xml:"hide_status_id,omitempty"`
+	Sort           string              `xml:"sort,omitempty"`
+	SortDirection  string              `xml:"sort_direction,omitempty"`
+	Sticky         *bool               `xml:"sticky,omitempty"`
+	ViewStateID    []int               `xml:"view_state_id,omitempty"`
+	FixedInVersion []string            `xml:"fixed_in_version,omitempty"`
+	TargetVersion  []string            `xml:"target_version,omitempty"`
+	Platform       []string            `xml:"platform,omitempty"`
+	OS             []string            `xml:"os,omitempty"`
+	OSBuild        []string            `xml:"os_build,omitempty"`
+	StartDay       *int                `xml:"start_day,omitempty"`
+	StartMonth     *int                `xml:"start_month,omitempty"`
+	StartYear      *int                `xml:"start_year,omitempty"`
+	EndDay         *int                `xml:"end_day,omitempty"`
+	EndMonth       *int                `xml:"end_month,omitempty"`
+	EndYear        *int                `xml:"end_year,omitempty"`
+	TagString      []string            `xml:"tag_string,omitempty"`
+	TagSelect      []int               `xml:"tag_select,omitempty"`
+	CustomFields   []FilterCustomField `xml:"custom_fields,omitempty"`
+}
+
+type FilterCustomField struct {
+	Field ObjectRef `xml:"field"`
+	Value []string  `xml:"value"`
+}
+
 type ObjectRef struct {
 	ID   int    `xml:"id,omitempty"`
 	Name string `xml:"name,omitempty"`
@@ -237,3 +289,5 @@ type ProjectData struct {
 	Subprojects   []ProjectData `xml:"subprojects>item,omitempty"`
 	InheritGlobal bool          `xml:"inherit_global,omitempty"`
 }
+
+// vim: set fileencoding=utf-8 noet:

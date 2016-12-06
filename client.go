@@ -1,4 +1,4 @@
-// Copyright 2015 Tamás Gulácsi
+// Copyright 2016 Tamás Gulácsi
 //
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,6 +87,16 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 		return errors.Wrapf(err, "@%d", d.InputOffset())
 	}
 	return nil
+}
+
+func (c Client) FilterSearchIssueIDs(ctx context.Context, filter FilterSearchData, pageNumber, perPage int) ([]int, error) {
+	var resp FilterSearchIssueIDsResponse
+	err := c.Call(ctx, "mc_filter_search_issue_ids",
+		FilterSearchIssueIDsRequest{Auth: c.auth, Filter: filter,
+			PageNumber: pageNumber, PerPage: perPage},
+		&resp,
+	)
+	return resp.IDs, err
 }
 
 func (c Client) ProjectGetUsers(ctx context.Context, projectID, access int) ([]AccountData, error) {
