@@ -135,6 +135,16 @@ type IssueExistsResponse struct {
 	Return bool `xml:"return"`
 }
 
+type StatusEnumRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_enum_status"`
+	Auth
+}
+
+type StatusEnumResponse struct {
+	XMLName  xml.Name    `xml:"http://futureware.biz/mantisconnect mc_enum_statusResponse"`
+	Statuses []ObjectRef `xml:"return>item"`
+}
+
 type LoginRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_login"`
 	Auth

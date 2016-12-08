@@ -193,6 +193,14 @@ func (c Client) IssueExists(ctx context.Context, issueID int) (bool, error) {
 	return resp.Return, nil
 }
 
+func (c Client) StatusEnum(ctx context.Context) ([]ObjectRef, error) {
+	var resp StatusEnumResponse
+	if err := c.Call(ctx, "mc_enum_status", StatusEnumRequest{Auth: c.auth}, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Statuses, nil
+}
+
 func (c Client) Login(ctx context.Context) (LoginResponse, error) {
 	var resp LoginResponse
 	return resp, c.Call(ctx, "mc_login", LoginRequest{Auth: c.auth}, &resp)
