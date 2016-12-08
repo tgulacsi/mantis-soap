@@ -244,7 +244,7 @@ type RelationshipData struct {
 type NoteData struct {
 	ID            int         `xml:"id,omitempty"`
 	Reporter      AccountData `xml:"reporter,omitempty"`
-	Text          string      `xml:"text,omitempty"`
+	Text          string      `xml:"text"`
 	ViewState     *ObjectRef  `xml:"view_state,omitempty"`
 	DateSubmitted Time        `xml:"date_submitted,omitempty"`
 	LastModified  Time        `xml:"last_modified,omitempty"`
