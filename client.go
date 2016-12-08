@@ -116,6 +116,18 @@ func (c Client) ProjectsGetUserAccessible(ctx context.Context) ([]ProjectData, e
 	return resp.Projects, err
 }
 
+func (c Client) ProjectIssues(ctx context.Context, projectID, page, perPage int) ([]IssueData, error) {
+	var resp ProjectIssuesResponse
+	err := c.Call(ctx, "mc_project_get_issues",
+		ProjectIssuesRequest{
+			Auth:       c.auth,
+			ProjectID:  projectID,
+			PageNumber: page,
+			PerPage:    perPage,
+		}, &resp)
+	return resp.Issues, err
+}
+
 func (c Client) IssueUpdate(ctx context.Context, issueID int, issue IssueData) (bool, error) {
 	var resp IssueUpdateResponse
 	issue.ID = &issueID

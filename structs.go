@@ -54,6 +54,19 @@ type ProjectsGetUserAccessibleResponse struct {
 	Projects []ProjectData `xml:"return>item"`
 }
 
+type ProjectIssuesRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_issues"`
+	Auth
+	ProjectID  int `xml:"project_id"`
+	PageNumber int `xml:"page_number"`
+	PerPage    int `xml:"per_page"`
+}
+
+type ProjectIssuesResponse struct {
+	XMLName xml.Name    `xml:"http://futureware.biz/mantisconnect mc_project_get_issuesResponse"`
+	Issues  []IssueData `xml:"return>item"`
+}
+
 type IssueAddRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_add"`
 	Auth
