@@ -29,7 +29,7 @@ import (
 
 var Log = func(keyvals ...interface{}) error { return nil }
 
-func New(ctx context.Context, baseURL, username, password string) (Client, error) {
+func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, password string) (Client, error) {
 	select {
 	case <-ctx.Done():
 		return Client{}, ctx.Err()
@@ -37,7 +37,7 @@ func New(ctx context.Context, baseURL, username, password string) (Client, error
 	}
 	baseURL += "/api/soap/mantisconnect.php"
 	cl := Client{
-		caller: soaphlp.NewClient(baseURL, baseURL, nil),
+		caller: soaphlp.NewClient(baseURL, baseURL, c),
 		auth: Auth{
 			Username: username,
 			Password: password,
@@ -49,6 +49,10 @@ func New(ctx context.Context, baseURL, username, password string) (Client, error
 	}
 	cl.User = resp.Return.Account
 	return cl, nil
+}
+
+func New(ctx context.Context, baseURL, username, password string) (Client, error) {
+	return NewWithHTTPClient(ctx, nil, baseURL, username, password)
 }
 
 type doer interface {
