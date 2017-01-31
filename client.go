@@ -29,7 +29,7 @@ import (
 
 var Log = func(keyvals ...interface{}) error { return nil }
 
-func New(ctx context.Context, baseURL, username, password string) (Client, error) {
+func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, password string) (Client, error) {
 	select {
 	case <-ctx.Done():
 		return Client{}, ctx.Err()
@@ -37,7 +37,7 @@ func New(ctx context.Context, baseURL, username, password string) (Client, error
 	}
 	baseURL += "/api/soap/mantisconnect.php"
 	cl := Client{
-		caller: soaphlp.NewClient(baseURL, baseURL, nil),
+		caller: soaphlp.NewClient(baseURL, baseURL, c),
 		auth: Auth{
 			Username: username,
 			Password: password,
@@ -49,6 +49,10 @@ func New(ctx context.Context, baseURL, username, password string) (Client, error
 	}
 	cl.User = resp.Return.Account
 	return cl, nil
+}
+
+func New(ctx context.Context, baseURL, username, password string) (Client, error) {
+	return NewWithHTTPClient(ctx, nil, baseURL, username, password)
 }
 
 type doer interface {
@@ -116,6 +120,18 @@ func (c Client) ProjectsGetUserAccessible(ctx context.Context) ([]ProjectData, e
 	return resp.Projects, err
 }
 
+func (c Client) ProjectIssues(ctx context.Context, projectID, page, perPage int) ([]IssueData, error) {
+	var resp ProjectIssuesResponse
+	err := c.Call(ctx, "mc_project_get_issues",
+		ProjectIssuesRequest{
+			Auth:       c.auth,
+			ProjectID:  projectID,
+			PageNumber: page,
+			PerPage:    perPage,
+		}, &resp)
+	return resp.Issues, err
+}
+
 func (c Client) IssueUpdate(ctx context.Context, issueID int, issue IssueData) (bool, error) {
 	var resp IssueUpdateResponse
 	issue.ID = &issueID
@@ -179,6 +195,14 @@ func (c Client) IssueExists(ctx context.Context, issueID int) (bool, error) {
 		return false, err
 	}
 	return resp.Return, nil
+}
+
+func (c Client) StatusEnum(ctx context.Context) ([]ObjectRef, error) {
+	var resp StatusEnumResponse
+	if err := c.Call(ctx, "mc_enum_status", StatusEnumRequest{Auth: c.auth}, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Statuses, nil
 }
 
 func (c Client) Login(ctx context.Context) (LoginResponse, error) {
