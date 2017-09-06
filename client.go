@@ -78,11 +78,12 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	}
 	resp := bufPool.Get()
 	defer bufPool.Put(resp)
-	if err := c.Caller.Call(ctx, resp, method, bytes.NewReader(buf.Bytes())); err != nil {
+	d, err := c.Caller.Call(ctx, resp, method, bytes.NewReader(buf.Bytes()))
+	if err != nil {
 		return errors.Wrap(err, buf.String())
 	}
 	buf.Reset()
-	if err := xml.NewDecoder(bytes.NewReader(resp.Bytes())).Decode(response); err != nil {
+	if err := d.Decode(response); err != nil {
 		return errors.Wrap(err, resp.String())
 	}
 	return nil
