@@ -37,7 +37,7 @@ func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, p
 	}
 	baseURL += "/api/soap/mantisconnect.php"
 	cl := Client{
-		caller: soaphlp.NewClient(baseURL, baseURL, c),
+		Caller: soaphlp.NewClient(baseURL, baseURL, c),
 		auth: Auth{
 			Username: username,
 			Password: password,
@@ -58,11 +58,8 @@ func New(ctx context.Context, baseURL, username, password string) (Client, error
 type doer interface {
 	Do(*http.Request) (*http.Response, error)
 }
-type caller interface {
-	Call(ctx context.Context, method string, body io.Reader) (*xml.Decoder, io.Closer, error)
-}
 type Client struct {
-	caller
+	soaphlp.Caller
 	auth Auth
 	User AccountData
 }
@@ -79,16 +76,14 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	if err := xml.NewEncoder(buf).Encode(request); err != nil {
 		return errors.Wrapf(err, "marshal %#v", request)
 	}
-	d, closer, err := c.caller.Call(ctx, method, bytes.NewReader(buf.Bytes()))
-	if closer != nil {
-		defer closer.Close()
-	}
-	if err != nil {
+	resp := bufPool.Get()
+	defer bufPool.Put(resp)
+	if err := c.Caller.Call(ctx, resp, method, bytes.NewReader(buf.Bytes())); err != nil {
 		return errors.Wrap(err, buf.String())
 	}
 	buf.Reset()
-	if err := d.Decode(response); err != nil {
-		return errors.Wrapf(err, "@%d", d.InputOffset())
+	if err := xml.NewDecoder(bytes.NewReader(resp.Bytes())).Decode(response); err != nil {
+		return errors.Wrap(err, resp.String())
 	}
 	return nil
 }
