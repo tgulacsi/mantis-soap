@@ -23,7 +23,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/tgulacsi/go/soaphlp"
+	"github.com/IhorBondartsov/go/soaphlp"
 	"golang.org/x/net/context"
 )
 
