@@ -313,4 +313,14 @@ type ProjectData struct {
 	InheritGlobal bool          `xml:"inherit_global,omitempty"`
 }
 
+type ProjectCategoriesReq struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_categories"`
+	Auth
+	ProjectID int `xml:"project_id"`
+}
+
+type ProjectCategoriesResp struct {
+	XMLName    xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_categoriesResponse"`
+	Categories []string `xml:"return>item"`
+}
 // vim: set fileencoding=utf-8 noet:
