@@ -15,7 +15,9 @@
 
 package mantis
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+)
 
 // https://www.unosoft.hu/mantis/kobe/api/soap/mantisconnect.php?wsdl
 
@@ -311,6 +313,17 @@ type ProjectData struct {
 	Description   string        `xml:"description,omitempty"`
 	Subprojects   []ProjectData `xml:"subprojects>item,omitempty"`
 	InheritGlobal bool          `xml:"inherit_global,omitempty"`
+}
+
+type ProjectCategoriesReq struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_categories"`
+	Auth
+	ProjectID int `xml:"project_id"`
+}
+
+type ProjectCategoriesResp struct {
+	XMLName    xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_categoriesResponse"`
+	Categories []string `xml:"return>item"`
 }
 
 // vim: set fileencoding=utf-8 noet:
