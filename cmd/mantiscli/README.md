@@ -13,10 +13,10 @@ Mantis Command-Line Interface
 Flags:
       --help            Show context-sensitive help (also try --help-long and --help-man).
       --mantis=MANTIS   Mantis URL
-  -u, --user="gthomas"  Mantis user name
+  -u, --user="$USER"  Mantis user name
       --password-env="MC_PASSWORD"
                         Environment variable's name for the password
-      --config="/home/gthomas/.config/mantiscli.json"
+      --config="/home/$USER/.config/mantiscli.json"
                         config file with the stored password
 
 Commands:
