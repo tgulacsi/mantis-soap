@@ -206,6 +206,12 @@ func (c Client) Login(ctx context.Context) (LoginResponse, error) {
 	return resp, c.Call(ctx, "mc_login", LoginRequest{Auth: c.auth}, &resp)
 }
 
+// GetCategoriesForProject - get the categories belonging to the specified project.
+func (c Client) GetCategoriesForProject(ctx context.Context, projectID int)(ProjectCategoriesResp, error){
+	var resp ProjectCategoriesResp
+	return resp, c.Call(ctx, "mc_project_get_categories", ProjectCategoriesReq{Auth: c.auth, ProjectID: projectID}, &resp)
+}
+
 var bufPool = &bufferPool{
 	Pool: sync.Pool{New: func() interface{} { return bytes.NewBuffer(make([]byte, 0, 1024)) }},
 }
@@ -221,5 +227,6 @@ func (p *bufferPool) Put(b *bytes.Buffer) {
 	b.Reset()
 	p.Pool.Put(b)
 }
+
 
 // vim: set fileencoding=utf-8 noet:
