@@ -73,16 +73,14 @@ func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	e.EncodeToken(start)
 	pr, pw := io.Pipe()
 	go func() {
-		var err error
-		defer pw.CloseWithError(err)
 		w := base64.NewEncoder(base64.StdEncoding, pw)
-		var n int64
-		n, err = io.Copy(w, r.Reader)
+		n, err := io.Copy(w, r.Reader)
 		err = errors.Wrap(err, "base64-encode")
 		Log("msg", "copied", "bytes", n, "error", err)
 		if closeErr := w.Close(); closeErr != nil && err == nil {
 			err = errors.Wrap(closeErr, "close base64-encoder")
 		}
+		pw.CloseWithError(err)
 	}()
 	p := make([]byte, 4096)
 	var n int

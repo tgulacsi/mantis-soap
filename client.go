@@ -55,9 +55,6 @@ func New(ctx context.Context, baseURL, username, password string) (Client, error
 	return NewWithHTTPClient(ctx, nil, baseURL, username, password)
 }
 
-type doer interface {
-	Do(*http.Request) (*http.Response, error)
-}
 type Client struct {
 	soaphlp.Caller
 	auth Auth
@@ -207,7 +204,7 @@ func (c Client) Login(ctx context.Context) (LoginResponse, error) {
 }
 
 // GetCategoriesForProject - get the categories belonging to the specified project.
-func (c Client) GetCategoriesForProject(ctx context.Context, projectID int)(ProjectCategoriesResp, error){
+func (c Client) GetCategoriesForProject(ctx context.Context, projectID int) (ProjectCategoriesResp, error) {
 	var resp ProjectCategoriesResp
 	return resp, c.Call(ctx, "mc_project_get_categories", ProjectCategoriesReq{Auth: c.auth, ProjectID: projectID}, &resp)
 }

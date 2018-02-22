@@ -20,9 +20,9 @@ import (
 	"strings"
 	"time"
 
-	"camlistore.org/pkg/magic"
 	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/net/context"
+	"gopkg.in/h2non/filetype.v1"
 
 	"github.com/go-kit/kit/log"
 	"github.com/pkg/errors"
@@ -275,8 +275,15 @@ func Main() error {
 			return err
 		}
 		defer fh.Close()
-		mimeType, r := magic.MIMETypeFromReader(fh)
-		if _, err := cl.IssueAttachmentAdd(ctx, issueID, filepath.Base(fn), mimeType, r); err != nil {
+
+		t, err := filetype.MatchReader(fh)
+		if err != nil {
+			return err
+		}
+		if _, err = fh.Seek(0, 0); err != nil {
+			return err
+		}
+		if _, err := cl.IssueAttachmentAdd(ctx, issueID, filepath.Base(fn), t.MIME.Value, fh); err != nil {
 			return errors.Wrapf(err, "add attachment %q", fn)
 		}
 		return nil
@@ -368,42 +375,6 @@ func loadConfig(file string) (Config, error) {
 	}
 	defer fh.Close()
 	return conf, json.NewDecoder(fh).Decode(&conf)
-}
-
-func asInt(s string) int {
-	i, err := strconv.Atoi(s)
-	if err != nil {
-		//log.Printf("Cannot convert %q to int: %v", s, err)
-		return 0
-	}
-	return i
-}
-func asTime(s string) time.Time {
-	t, err := time.Parse("2006-01-02 15:04:05", s)
-	if err != nil {
-		//log.Printf("Cannot parse %q to time: %v", s, err)
-	}
-	return t
-}
-
-func asNumbers(args ...string) []int {
-	numbers := make([]int, 0, len(args))
-	for _, a := range args {
-		i, err := strconv.Atoi(a)
-		if err != nil {
-			logger.Log("msg", "Not an issue number", "arg", a, "error", err)
-			continue
-		}
-		numbers = append(numbers, i)
-	}
-	return numbers
-}
-
-func getLogger(ctx context.Context) log.Logger {
-	if logger, _ := ctx.Value("logger").(log.Logger); logger != nil {
-		return logger
-	}
-	return logger
 }
 
 func E(answer interface{}) error {
