@@ -67,6 +67,9 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 		return ctx.Err()
 	default:
 	}
+	if c.Caller == nil {
+		panic("nil Caller")
+	}
 	buf := bufPool.Get()
 	defer bufPool.Put(buf)
 
