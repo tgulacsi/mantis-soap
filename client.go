@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/go-kit/kit/log"
 	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/soaphlp"
 	"golang.org/x/net/context"
@@ -59,6 +60,7 @@ type Client struct {
 	soaphlp.Caller
 	auth Auth
 	User AccountData
+	log.Logger
 }
 
 func (c Client) Call(ctx context.Context, method string, request, response interface{}) error {
@@ -78,6 +80,9 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	}
 	resp := bufPool.Get()
 	defer bufPool.Put(resp)
+	if c.Logger != nil {
+		ctx = soaphlp.WithLog(ctx, c.Logger.Log)
+	}
 	d, err := c.Caller.Call(ctx, resp, method, bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return errors.Wrap(err, buf.String())
@@ -191,6 +196,45 @@ func (c Client) IssueExists(ctx context.Context, issueID int) (bool, error) {
 		return false, err
 	}
 	return resp.Return, nil
+}
+
+func (c Client) ProjectVersionsList(ctx context.Context, projectID int) ([]ProjectVersionData, error) {
+	var resp ProjectGetVersionsResponse
+	if err := c.Call(ctx, "mc_project_get_versions",
+		ProjectGetVersionsRequest{Auth: c.auth, ProjectID: projectID},
+		&resp,
+	); err != nil {
+		return nil, err
+	}
+	return resp.Return, nil
+}
+func (c Client) ProjectVersionAdd(ctx context.Context, projectID int, name, description string, released, obsolete bool, date *Time) (int, error) {
+	var resp ProjectVersionAddResponse
+	if err := c.Call(ctx, "mc_project_version_add",
+		ProjectVersionAddRequest{Auth: c.auth,
+			Version: ProjectVersionData{
+				ProjectID: projectID,
+				Name:      name, Description: description,
+				Released: released, Obsolete: obsolete,
+				DateOrder: date}},
+		&resp,
+	); err != nil {
+		return 0, err
+	}
+	return resp.Return, nil
+}
+func (c Client) ProjectVersionUpdate(ctx context.Context, version ProjectVersionData) error {
+	var resp ProjectVersionUpdateResponse
+	return c.Call(ctx, "mc_project_version_updateRequest",
+		ProjectVersionUpdateRequest{Auth: c.auth, VersionID: version.ID, Version: version},
+		&resp,
+	)
+}
+func (c Client) ProjectVersionDelete(ctx context.Context, versionID int) error {
+	var resp ProjectVersionDeleteResponse
+	return c.Call(ctx, "mc_project_version_deleteRequest",
+		ProjectVersionDeleteRequest{Auth: c.auth, VersionID: versionID},
+		&resp)
 }
 
 func (c Client) StatusEnum(ctx context.Context) ([]ObjectRef, error) {

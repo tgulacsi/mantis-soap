@@ -135,6 +135,65 @@ type IssueExistsResponse struct {
 	Return bool `xml:"return"`
 }
 
+type ProjectGetVersionsRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_versions"`
+	Auth
+	ProjectID int `xml:"project_id"`
+}
+type ProjectGetVersionsResponse struct {
+	XMLName xml.Name             `xml:"http://futureware.biz/mantisconnect mc_project_get_versionsResponse"`
+	Return  []ProjectVersionData `xml:"return>item"`
+}
+type ProjectVersionAddRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_addRequest"`
+	Auth
+	Version ProjectVersionData `xml:"version"`
+}
+type ProjectVersionAddResponse struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_addResponse"`
+	Return  int      `xml:"return"`
+}
+type ProjectVersionUpdateRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_updateRequest"`
+	Auth
+	VersionID int                `xml:"version_id"`
+	Version   ProjectVersionData `xml:"version"`
+}
+type ProjectVersionUpdateResponse struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_updateResponse"`
+	Return  bool     `xml:"return"`
+}
+
+type ProjectVersionDeleteRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_deleteRequest"`
+	Auth
+	VersionID int `xml:"version_id"`
+}
+type ProjectVersionDeleteResponse struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_deleteResponse"`
+	Return  bool     `xml:"return"`
+}
+
+type ProjectGetReleasedVersionsRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_released_versionsRequest"`
+	Auth
+	ProjectID int `xml:"project_id"`
+}
+type ProjectGetReleasedVersionsResponse struct {
+	XMLName xml.Name             `xml:"http://futureware.biz/mantisconnect mc_project_get_released_versionsResponse"`
+	Return  []ProjectVersionData `xml:"return>item"`
+}
+
+type ProjectGetUnreleasedVersionsRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_unreleased_versionsRequest"`
+	Auth
+	ProjectID int `xml:"project_id"`
+}
+type ProjectGetUnreleasedVersionsResponse struct {
+	XMLName xml.Name             `xml:"http://futureware.biz/mantisconnect mc_project_get_unreleased_versionsResponse"`
+	Return  []ProjectVersionData `xml:"return>item"`
+}
+
 type StatusEnumRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_enum_status"`
 	Auth
@@ -313,6 +372,16 @@ type ProjectData struct {
 	InheritGlobal bool          `xml:"inherit_global,omitempty"`
 }
 
+type ProjectVersionData struct {
+	ID          int    `xml:"id"`
+	Name        string `xml:"name"`
+	ProjectID   int    `xml:"project_id"`
+	DateOrder   *Time  `xml:"date_order"`
+	Description string `xml:"description"`
+	Released    bool   `xml:"released"`
+	Obsolete    bool   `xml:"obsolete"`
+}
+
 type ProjectCategoriesReq struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_categories"`
 	Auth
@@ -323,4 +392,5 @@ type ProjectCategoriesResp struct {
 	XMLName    xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_categoriesResponse"`
 	Categories []string `xml:"return>item"`
 }
+
 // vim: set fileencoding=utf-8 noet:

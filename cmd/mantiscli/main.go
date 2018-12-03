@@ -31,8 +31,6 @@ import (
 	"github.com/tgulacsi/go/loghlp/kitloghlp"
 	"github.com/tgulacsi/go/term"
 	"github.com/tgulacsi/mantis-soap"
-
-	"unosoft.hu/sysutils/mantiscli/mantis_uno"
 )
 
 var logger = kitloghlp.New(os.Stderr)
@@ -45,9 +43,8 @@ func main() {
 }
 
 func Main() error {
-	mantis_uno.Log = log.With(logger, "lib", "mantis_uno").Log
-
 	app := kingpin.New("mantiscli", "Mantis Command-Line Interface")
+	appVerbose := app.Flag("verbose", "verbose logging").Short('v').Bool()
 
 	URL := app.Flag("mantis", "Mantis URL").URL()
 	username := app.Flag("user", "Mantis user name").Short('u').Default(os.Getenv("USER")).String()
@@ -101,6 +98,20 @@ func Main() error {
 	projectsCmd := app.Command("project", "do sth with projects").Alias("projects")
 	listProjectsCmd := projectsCmd.Command("list", "list projects").Default()
 
+	projectVersionsCmd := projectsCmd.Command("versions", "do sth with versions").Alias("version")
+	pVersionsListCmd := projectVersionsCmd.Command("list", "list project versions")
+	pVersionsListProjectID := pVersionsListCmd.Arg("project-id", "project ID").Required().Int()
+
+	pVersionsAddCmd := projectVersionsCmd.Command("add", "add project version")
+	pVersionsAddName := pVersionsAddCmd.Arg("name", "version name").String()
+	pVersionsAddProjectID := pVersionsAddCmd.Flag("project", "project id").Required().Int()
+	pVersionsAddDescription := pVersionsAddCmd.Flag("description", "version description").String()
+	pVersionsAddReleased := pVersionsAddCmd.Flag("released", "released?").Bool()
+	pVersionsAddObsolete := pVersionsAddCmd.Flag("obsolete", "obsolete?").Bool()
+
+	pVersionsDeleteCmd := projectVersionsCmd.Command("delete", "delete project version")
+	pVersionsDeleteVersionID := pVersionsDeleteCmd.Arg("version-id", "version id").Int()
+
 	usersCmd := app.Command("users", "do sth with users").Alias("user")
 	listUsersCmd := usersCmd.Command("list", "list users").Default()
 	usersProjectID := listUsersCmd.Arg("project", "project ID").Default("1").Int()
@@ -127,8 +138,12 @@ func Main() error {
 			}
 		}
 
+		var u string
+		if u2 := *URL; u2 != nil {
+			u = u2.String()
+		}
 		if passw == "" {
-			fmt.Printf("Password for %q at %q: ", *username, (*URL).String())
+			fmt.Printf("Password for %q at %q: ", *username, u)
 			if b, err := terminal.ReadPassword(0); err != nil {
 				return errors.Wrap(err, "read password")
 			} else {
@@ -143,9 +158,12 @@ func Main() error {
 		}
 		ctx, cancel = C(30)
 		var err error
-		if cl, err = mantis.New(ctx, (*URL).String(), *username, passw); err != nil {
+		if cl, err = mantis.New(ctx, u, *username, passw); err != nil {
 			cancel()
 			return err
+		}
+		if *appVerbose {
+			cl.Logger = log.With(logger, "lib", "mantis-soap")
 		}
 		if *configFile != "" {
 			Log := log.With(logger, "file", configFile).Log
@@ -315,6 +333,28 @@ func Main() error {
 		for _, att := range issue.Attachments {
 			E(att.DownloadURL)
 		}
+
+	case pVersionsListCmd.FullCommand():
+		ctx, cancel := C(10)
+		defer cancel()
+		versions, err := cl.ProjectVersionsList(ctx, *pVersionsListProjectID)
+		enc := json.NewEncoder(os.Stdout)
+		for _, v := range versions {
+			enc.Encode(v)
+		}
+		return err
+
+	case pVersionsAddCmd.FullCommand():
+		ctx, cancel := C(10)
+		defer cancel()
+		id, err := cl.ProjectVersionAdd(ctx, *pVersionsAddProjectID, *pVersionsAddName, *pVersionsAddDescription, *pVersionsAddReleased, *pVersionsAddObsolete, nil)
+		fmt.Println(id)
+		return err
+
+	case pVersionsDeleteCmd.FullCommand():
+		ctx, cancel := C(10)
+		defer cancel()
+		return cl.ProjectVersionDelete(ctx, *pVersionsDeleteVersionID)
 	}
 
 	return nil
