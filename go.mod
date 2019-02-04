@@ -23,7 +23,7 @@ require (
 	google.golang.org/api v0.0.0-20181129220737-af4fc4062c26 // indirect
 	google.golang.org/genproto v0.0.0-20181202183823-bd91e49a0898 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
-	gopkg.in/goracle.v2 v2.10.3 // indirect
+	gopkg.in/goracle.v2 v2.12.1 // indirect
 	gopkg.in/h2non/filetype.v1 v1.0.5
 	gopkg.in/yaml.v2 v2.2.2 // indirect
 	honnef.co/go/js/dom v0.0.0-20181202134054-9dbdcd412bde // indirect
