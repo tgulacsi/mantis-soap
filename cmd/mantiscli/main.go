@@ -13,6 +13,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,8 +26,8 @@ import (
 	"gopkg.in/h2non/filetype.v1"
 
 	"github.com/go-kit/kit/log"
+	"github.com/peterbourgon/ff/ffcli"
 	"github.com/pkg/errors"
-	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/tgulacsi/go/loghlp/kitloghlp"
 	"github.com/tgulacsi/go/term"
@@ -43,26 +44,67 @@ func main() {
 }
 
 func Main() error {
-	app := kingpin.New("mantiscli", "Mantis Command-Line Interface")
-	appVerbose := app.Flag("verbose", "verbose logging").Short('v').Bool()
+	fs := flag.NewFlagSet("mantiscli", flag.ExitOnError)
+	app := ffcli.Command{Name: "mantiscli", ShortHelp: "Mantis Command-Line Interface", FlagSet: fs}
+	appVerbose := fs.Bool("v", false, "verbose logging")
 
-	URL := app.Flag("mantis", "Mantis URL").URL()
-	username := app.Flag("user", "Mantis user name").Short('u').Default(os.Getenv("USER")).String()
-	passwordEnv := app.Flag("password-env", "Environment variable's name for the password").
-		Default("MC_PASSWORD").
-		String()
-	configFile := app.Flag("config", "config file with the stored password").
-		Default(os.ExpandEnv("/home/$USER/.config/mantiscli.json")).
-		String()
+	URL := fs.String("mantis", "", "Mantis URL")
+	username := fs.String("user", os.Getenv("USER"), "Mantis user name")
+	passwordEnv := fs.String("password-env", "MC_PASSWORD", "Environment variable's name for the password")
+	configFile := fs.String("config", os.ExpandEnv("/home/$USER/.config/mantiscli.json"), "config file with the stored password")
 
-	issueCmd := app.Command("issue", "do sth on issues").Alias("issues")
-	existsCmd := issueCmd.Command("exists", "check the existence of issues")
-	existsIssueIDs := existsCmd.Arg("issueid", "Issue IDs to check").Ints()
+	toInts := func(args []string) ([]int, error) {
+		var firstErr error
+		ints := make([]int, 0, len(args))
+		for _, a := range args {
+			i, err := strconv.Atoi(a)
+			if err != nil {
+				if firstErr == nil {
+					firstErr = errors.Errorf("%q: %w", a, err)
+				}
+				continue
+			}
+			ints = append(ints, i)
+		}
+		return ints, firstErr
+	}
 
-	getIssuesCmd := issueCmd.Command("get", "get")
-	getIssueIDs := getIssuesCmd.Arg("issueid", "Issue IDs to check").Ints()
-	getMonitorsCmd := issueCmd.Command("monitors", "get monitors").Alias("list_monitors")
-	getMonitorsIssueIDs := getMonitorsCmd.Arg("issueid", "Issue IDs to get monitors of").Ints()
+	existCmd := issueCmd.Command{Name: "exist", ShortHelp: "check the existence of issues",
+		Run: func(args []string) error {
+			issueIDs, err := toInts(args)
+			if err != nil {
+				return err
+			}
+			_ = issueIDs
+			return nil
+		},
+	}
+	getIssuesCmd := &ffcli.Command{Name: "get", ShortHelp: "get",
+		Run: func(args []string) error {
+			issueIDs, err := toInts(args)
+			if err != nil {
+				return err
+			}
+			_ = issueIDs
+			return nil
+		},
+	}
+
+	getMonitorsCmd := &ffcli.Command{Name: "monitors", ShortHelp: "get monitors",
+		Run: func(args []string) error {
+			issueIDs, err := toInts(args)
+			if err != nil {
+				return err
+			}
+			_ = issueIDs
+			return nil
+		},
+	}
+
+	issueCmd := &ffcli.Command{Name: "issue", ShortHelp: "do sth on issues",
+		Subcommands: []*ffcli.Command{existCmd, getIssuesCmd, getMonitorsCmd},
+	}
+
 	addMonitorsCmd := issueCmd.Command("addmonitor", "add monitor").Alias("add_monitor")
 	addMonitorsIssueID := addMonitorsCmd.Arg("issueid", "Issue ID to add monitor to").Int()
 	plusMonitors := addMonitorsCmd.Arg("plus_monitors", "names of plus monitors").Strings()
