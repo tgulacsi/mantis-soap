@@ -1,4 +1,4 @@
-// Copyright 2017 Tamás Gulácsi. All rights reserved.
+// Copyright 2017, 2020 Tamás Gulácsi. All rights reserved.
 
 //go:generate go get github.com/hooklift/gowsdl/cmd/gowsdl
 //go:generate wget -O mantis.wsdl.raw -q "https://www.unosoft.hu/mantis/kobe/api/soap/mantisconnect.php?wsdl"
@@ -26,7 +26,7 @@ import (
 	"gopkg.in/h2non/filetype.v1"
 
 	"github.com/go-kit/kit/log"
-	"github.com/peterbourgon/ff/ffcli"
+	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/pkg/errors"
 
 	"github.com/tgulacsi/go/loghlp/kitloghlp"
@@ -45,7 +45,7 @@ func main() {
 
 func Main() error {
 	fs := flag.NewFlagSet("mantiscli", flag.ExitOnError)
-	app := ffcli.Command{Name: "mantiscli", ShortHelp: "Mantis Command-Line Interface", FlagSet: fs}
+	app := ffcli.Command{Name: "mantiscli", ShortUsage: "Mantis Command-Line Interface", FlagSet: fs}
 	appVerbose := fs.Bool("v", false, "verbose logging")
 
 	URL := fs.String("mantis", "", "Mantis URL")
@@ -69,39 +69,69 @@ func Main() error {
 		return ints, firstErr
 	}
 
-	existCmd := issueCmd.Command{Name: "exist", ShortHelp: "check the existence of issues",
-		Run: func(args []string) error {
+	existCmd := issueCmd.Command{Name: "exist", ShortUsage: "check the existence of issues",
+		Run: func(ctx context.Context, args []string) error {
 			issueIDs, err := toInts(args)
 			if err != nil {
 				return err
 			}
 			_ = issueIDs
-			return nil
+		answer := make(map[string]interface{}, len(*existsIssueIDs))
+		for _, i := range *existsIssueIDs {
+			exists, err := cl.IssueExists(ctx, i)
+			if err != nil {
+				return err
+			}
+			answer[strconv.Itoa(i)] = exists
+		}
+		E(answer)
 		},
 	}
-	getIssuesCmd := &ffcli.Command{Name: "get", ShortHelp: "get",
-		Run: func(args []string) error {
+	getIssuesCmd := &ffcli.Command{Name: "get", ShortUsage: "get",
+		Run: func(ctx context.Context, args []string) error {
 			issueIDs, err := toInts(args)
 			if err != nil {
 				return err
 			}
 			_ = issueIDs
+		answer := make(map[string]interface{}, len(*getIssueIDs))
+		for _, i := range *getIssueIDs {
+			issue, err := cl.IssueGet(ctx, i)
+			if err != nil {
+				return err
+			}
+			answer[strconv.Itoa(i)] = issue
+		}
+		E(answer)
 			return nil
 		},
 	}
 
-	getMonitorsCmd := &ffcli.Command{Name: "monitors", ShortHelp: "get monitors",
-		Run: func(args []string) error {
+	getMonitorsCmd := &ffcli.Command{Name: "monitors", ShortUsage: "get monitors",
+		Run: func(ctx context.Context, args []string) error {
 			issueIDs, err := toInts(args)
 			if err != nil {
 				return err
 			}
 			_ = issueIDs
+		ids := *getMonitorsIssueIDs
+		if cmd == listMonitorsCmd.FullCommand() {
+			ids = []int{*listMonitorsIssueID}
+		}
+		answer := make(map[string]interface{}, len(ids))
+		for _, i := range ids {
+			issue, err := cl.IssueGet(ctx, i)
+			if err != nil {
+				return err
+			}
+			answer[strconv.Itoa(i)] = issue.Monitors
+		}
+		E(answer)
 			return nil
 		},
 	}
 
-	issueCmd := &ffcli.Command{Name: "issue", ShortHelp: "do sth on issues",
+	issueCmd := &ffcli.Command{Name: "issue", ShortUsage: "do sth on issues",
 		Subcommands: []*ffcli.Command{existCmd, getIssuesCmd, getMonitorsCmd},
 	}
 
@@ -133,7 +163,15 @@ func Main() error {
 	plusMonitors2 := addMonitors2.Arg("plus_monitors", "names of plus monitors").Strings()
 
 	noteCmd := app.Command("note", "do sth with notes").Alias("notes")
-	addNoteCmd := noteCmd.Command("add", "add a note to an issue").Default()
+	addNoteCmd := ffcli.Command{Name:add,ShortUsage:"add a note to an issue",.Default()
+		noteID, err := cl.IssueNoteAdd(ctx, *addNoteIssueID, mantis.IssueNoteData{
+			Reporter: cl.User,
+			Text:     strings.Join(*addNoteText, " "),
+		})
+		if err != nil {
+			return err
+		}
+		logger.Log("msg", "added", "note", noteID)
 	addNoteIssueID := addNoteCmd.Arg("issueid", "Issue ID to add the note to").Int()
 	addNoteText := addNoteCmd.Arg("text", "text to add as note").Strings()
 
@@ -159,16 +197,12 @@ func Main() error {
 	usersProjectID := listUsersCmd.Arg("project", "project ID").Default("1").Int()
 	usersAccessLevel := listUsersCmd.Flag("access-level", "access level threshold").Default("10").Int()
 
-	var (
-		cl     mantis.Client
-		ctx    context.Context
-		cancel context.CancelFunc
-	)
+	var cl     mantis.Client
 
-	app.Action(kingpin.Action(func(aCtx *kingpin.ParseContext) error {
-		if aCtx == nil || aCtx.SelectedCommand == nil {
-			return nil
-		}
+	if err := app.Parse(os.Args[1:]); err != nil {
+		return err
+	}
+
 		passw := os.Getenv(*passwordEnv)
 		var conf Config
 		if passw == "" && *configFile != "" {
@@ -221,8 +255,6 @@ func Main() error {
 				}
 			}
 		}
-		return nil
-	}))
 
 	args := os.Args[1:]
 	enc := term.GetTTYEncoding()
@@ -235,55 +267,16 @@ func Main() error {
 	}
 	//logger.Log("args", args)
 
-	switch cmd := kingpin.MustParse(app.Parse(args)); cmd {
-	case existsCmd.FullCommand():
-		answer := make(map[string]interface{}, len(*existsIssueIDs))
-		for _, i := range *existsIssueIDs {
-			exists, err := cl.IssueExists(ctx, i)
-			if err != nil {
-				return err
-			}
-			answer[strconv.Itoa(i)] = exists
-		}
-		E(answer)
+	return app.Run(ctx)
+}
 
 	case getMonitorsCmd.FullCommand(), listMonitorsCmd.FullCommand():
-		ids := *getMonitorsIssueIDs
-		if cmd == listMonitorsCmd.FullCommand() {
-			ids = []int{*listMonitorsIssueID}
-		}
-		answer := make(map[string]interface{}, len(ids))
-		for _, i := range ids {
-			issue, err := cl.IssueGet(ctx, i)
-			if err != nil {
-				return err
-			}
-			answer[strconv.Itoa(i)] = issue.Monitors
-		}
-		E(answer)
 
 	case getIssuesCmd.FullCommand():
-		answer := make(map[string]interface{}, len(*getIssueIDs))
-		for _, i := range *getIssueIDs {
-			issue, err := cl.IssueGet(ctx, i)
-			if err != nil {
-				return err
-			}
-			answer[strconv.Itoa(i)] = issue
-		}
-		E(answer)
 
 	case addNoteCmd.FullCommand():
 		ctx, cancel := C(10)
 		defer cancel()
-		noteID, err := cl.IssueNoteAdd(ctx, *addNoteIssueID, mantis.IssueNoteData{
-			Reporter: cl.User,
-			Text:     strings.Join(*addNoteText, " "),
-		})
-		if err != nil {
-			return err
-		}
-		logger.Log("msg", "added", "note", noteID)
 
 	case listProjectsCmd.FullCommand():
 		ctx, cancel := C(10)

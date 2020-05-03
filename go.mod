@@ -25,6 +25,7 @@ require (
 	github.com/nathankerr/pdf v0.0.0-20150817203815-7cab54524cfa // indirect
 	github.com/nf/cr2 v0.0.0-20180623103828-4699471a17ed // indirect
 	github.com/peterbourgon/ff v1.6.0
+	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/sftp v1.8.3 // indirect
 	github.com/plaid/plaid-go v0.0.0-20180625002317-ef879de0d7bd // indirect
