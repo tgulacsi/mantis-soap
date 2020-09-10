@@ -163,7 +163,7 @@ func Main() error {
 	plusMonitors2 := addMonitors2.Arg("plus_monitors", "names of plus monitors").Strings()
 
 	noteCmd := app.Command("note", "do sth with notes").Alias("notes")
-	addNoteCmd := ffcli.Command{Name:add,ShortUsage:"add a note to an issue",.Default()
+	addNoteCmd := ffcli.Command{Name:add,ShortUsage:"add a note to an issue",
 		noteID, err := cl.IssueNoteAdd(ctx, *addNoteIssueID, mantis.IssueNoteData{
 			Reporter: cl.User,
 			Text:     strings.Join(*addNoteText, " "),

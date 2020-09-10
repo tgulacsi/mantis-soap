@@ -1,4 +1,4 @@
-// Copyright 2016 Tamás Gulácsi
+// Copyright 2016, 2020 Tamás Gulácsi
 //
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,10 @@
 
 package mantis
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+	"strconv"
+)
 
 // https://www.unosoft.hu/mantis/kobe/api/soap/mantisconnect.php?wsdl
 
@@ -40,8 +43,8 @@ type FilterSearchIssueIDsRequest struct {
 }
 
 type FilterSearchIssueIDsResponse struct {
-	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_filter_search_issue_idsResponse"`
-	IDs     []int    `xml:"return>item"`
+	XMLName xml.Name  `xml:"http://futureware.biz/mantisconnect mc_filter_search_issue_idsResponse"`
+	IDs     []IssueID `xml:"return>item"`
 }
 
 type ProjectsGetUserAccessibleRequest struct {
@@ -81,7 +84,7 @@ type IssueAddResponse struct {
 type IssueUpdateRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_update"`
 	Auth
-	IssueID int       `xml:"issueId"`
+	IssueID IssueID   `xml:"issueId"`
 	Issue   IssueData `xml:"issue"`
 }
 
@@ -93,10 +96,10 @@ type IssueUpdateResponse struct {
 type IssueAttachmentAddRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_attachment_add"`
 	Auth
-	IssueID  int    `xml:"issue_id"`
-	Name     string `xml:"name"`
-	FileType string `xml:"file_type"`
-	Content  Reader `xml:"content"`
+	IssueID  IssueID `xml:"issue_id"`
+	Name     string  `xml:"name"`
+	FileType string  `xml:"file_type"`
+	Content  Reader  `xml:"content"`
 }
 
 type IssueAttachmentAddResponse struct {
@@ -107,7 +110,7 @@ type IssueAttachmentAddResponse struct {
 type IssueNoteAddRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_note_add"`
 	Auth
-	IssueID int           `xml:"issue_id"`
+	IssueID IssueID       `xml:"issue_id"`
 	Note    IssueNoteData `xml:"note"`
 }
 type IssueNoteAddResponse struct {
@@ -118,7 +121,7 @@ type IssueNoteAddResponse struct {
 type IssueGetRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_get"`
 	Auth
-	IssueID int `xml:"issue_id"`
+	IssueID IssueID `xml:"issue_id"`
 }
 
 type IssueGetResponse struct {
@@ -129,7 +132,7 @@ type IssueGetResponse struct {
 type IssueExistsRequest struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_exists"`
 	Auth
-	IssueID int `xml:"issue_id"`
+	IssueID IssueID `xml:"issue_id"`
 }
 type IssueExistsResponse struct {
 	Return bool `xml:"return"`
@@ -226,7 +229,7 @@ type IssueNoteData struct {
 }
 
 type IssueData struct {
-	ID                    *int               `xml:"id,omitempty"`
+	ID                    *IssueID           `xml:"id,omitempty"`
 	ViewState             *ObjectRef         `xml:"view_state,omitempty"`
 	LastUpdated           *Time              `xml:"last_updated,omitempty"`
 	Project               *ObjectRef         `xml:"project,omitempty"`
@@ -369,7 +372,7 @@ type ProjectData struct {
 	ID            int           `xml:"id,omitempty"`
 	Name          string        `xml:"name,omitempty"`
 	Status        *ObjectRef    `xml:"status,omitempty"`
-	Enabled       bool          `xml:"enabled,omitempy"`
+	Enabled       bool          `xml:"enabled"`
 	ViewState     *ObjectRef    `xml:"view_state,omitempty"`
 	AccessMin     *ObjectRef    `xml:"access_min,omitempty"`
 	FilePath      string        `xml:"file_path,omitempty"`
@@ -397,6 +400,64 @@ type ProjectCategoriesReq struct {
 type ProjectCategoriesResp struct {
 	XMLName    xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_get_categoriesResponse"`
 	Categories []string `xml:"return>item"`
+}
+
+type IssueID int
+
+func (id IssueID) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	return e.EncodeElement(int(id), start)
+}
+func (id *IssueID) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var s string
+	if err := d.DecodeElement(&s, &start); err != nil {
+		return err
+	}
+	s = trimSharp(s)
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return err
+	}
+	*id = IssueID(i)
+	return nil
+}
+
+/*
+func (id IssueID) MarshalJSON() ([]byte, error) { return json.Marshal(int(id)) }
+func (id *IssueID) UnmarshalJSON(p []byte) error {
+	if len(p) == 0 {
+		*id = 0
+		return nil
+	}
+	if p[0] == '"' {
+		var s string
+		if err := json.Unmarshal(&s, p); err != nil {
+			return err
+		}
+		s = trimSharp(s)
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			return err
+		}
+		*id = IssueID(i)
+		return nil
+	}
+	var i int
+	if err := json.Unmarshal(&i, p); err != nil {
+		return err
+	}
+	*id = IssueID(i)
+	return nil
+}
+*/
+
+func trimSharp(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	for s[0] == '#' {
+		s = s[1:]
+	}
+	return s
 }
 
 // vim: set fileencoding=utf-8 noet:
