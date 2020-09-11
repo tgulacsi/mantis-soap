@@ -29,6 +29,7 @@ import (
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/pkg/errors"
 
+	"github.com/tgulacsi/go/globalctx"
 	"github.com/tgulacsi/go/loghlp/kitloghlp"
 	"github.com/tgulacsi/go/term"
 	"github.com/tgulacsi/mantis-soap"
@@ -44,14 +45,7 @@ func main() {
 }
 
 func Main() error {
-	fs := flag.NewFlagSet("mantiscli", flag.ExitOnError)
-	app := ffcli.Command{Name: "mantiscli", ShortUsage: "Mantis Command-Line Interface", FlagSet: fs}
-	appVerbose := fs.Bool("v", false, "verbose logging")
-
-	URL := fs.String("mantis", "", "Mantis URL")
-	username := fs.String("user", os.Getenv("USER"), "Mantis user name")
-	passwordEnv := fs.String("password-env", "MC_PASSWORD", "Environment variable's name for the password")
-	configFile := fs.String("config", os.ExpandEnv("/home/$USER/.config/mantiscli.json"), "config file with the stored password")
+	var cl mantis.Client
 
 	toInts := func(args []string) ([]int, error) {
 		var firstErr error
@@ -69,192 +63,313 @@ func Main() error {
 		return ints, firstErr
 	}
 
-	existCmd := issueCmd.Command{Name: "exist", ShortUsage: "check the existence of issues",
-		Run: func(ctx context.Context, args []string) error {
+	existCmd := &ffcli.Command{Name: "exist", ShortUsage: "check the existence of issues",
+		Exec: func(ctx context.Context, args []string) error {
 			issueIDs, err := toInts(args)
 			if err != nil {
 				return err
 			}
-			_ = issueIDs
-		answer := make(map[string]interface{}, len(*existsIssueIDs))
-		for _, i := range *existsIssueIDs {
-			exists, err := cl.IssueExists(ctx, i)
-			if err != nil {
-				return err
+			answer := make(map[string]interface{}, len(issueIDs))
+			for _, i := range issueIDs {
+				exists, err := cl.IssueExists(ctx, i)
+				if err != nil {
+					return err
+				}
+				answer[strconv.Itoa(i)] = exists
 			}
-			answer[strconv.Itoa(i)] = exists
-		}
-		E(answer)
+			return E(answer)
 		},
 	}
 	getIssuesCmd := &ffcli.Command{Name: "get", ShortUsage: "get",
-		Run: func(ctx context.Context, args []string) error {
+		Exec: func(ctx context.Context, args []string) error {
 			issueIDs, err := toInts(args)
 			if err != nil {
 				return err
 			}
-			_ = issueIDs
-		answer := make(map[string]interface{}, len(*getIssueIDs))
-		for _, i := range *getIssueIDs {
-			issue, err := cl.IssueGet(ctx, i)
-			if err != nil {
-				return err
+			answer := make(map[string]interface{}, len(issueIDs))
+			for _, i := range issueIDs {
+				issue, err := cl.IssueGet(ctx, i)
+				if err != nil {
+					return err
+				}
+				answer[strconv.Itoa(i)] = issue
 			}
-			answer[strconv.Itoa(i)] = issue
-		}
-		E(answer)
-			return nil
+			return E(answer)
 		},
 	}
 
 	getMonitorsCmd := &ffcli.Command{Name: "monitors", ShortUsage: "get monitors",
-		Run: func(ctx context.Context, args []string) error {
+		Exec: func(ctx context.Context, args []string) error {
 			issueIDs, err := toInts(args)
 			if err != nil {
 				return err
 			}
-			_ = issueIDs
-		ids := *getMonitorsIssueIDs
-		if cmd == listMonitorsCmd.FullCommand() {
-			ids = []int{*listMonitorsIssueID}
-		}
-		answer := make(map[string]interface{}, len(ids))
-		for _, i := range ids {
-			issue, err := cl.IssueGet(ctx, i)
+			answer := make(map[string]interface{}, len(issueIDs))
+			for _, i := range issueIDs {
+				issue, err := cl.IssueGet(ctx, i)
+				if err != nil {
+					return err
+				}
+				answer[strconv.Itoa(i)] = issue.Monitors
+			}
+			return E(answer)
+		},
+	}
+
+	addAttachmentCmd := &ffcli.Command{Name: "attach", ShortUsage: "attach a file to the issue",
+		Exec: func(ctx context.Context, args []string) error {
+			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
 			}
-			answer[strconv.Itoa(i)] = issue.Monitors
-		}
-		E(answer)
+			fn := args[1]
+
+			issue, err := cl.IssueGet(ctx, issueID)
+			if err != nil {
+				return err
+			}
+			for _, at := range issue.Attachments {
+				if at.FileName == fn && at.Size > 0 {
+					logger.Log("msg", "Attachment already there.", "file", fn)
+					return nil
+				}
+			}
+			fh, err := os.Open(fn)
+			if err != nil {
+				return err
+			}
+			defer fh.Close()
+
+			t, err := filetype.MatchReader(fh)
+			if err != nil {
+				return err
+			}
+			if _, err = fh.Seek(0, 0); err != nil {
+				return err
+			}
+			if _, err := cl.IssueAttachmentAdd(ctx, issueID, filepath.Base(fn), t.MIME.Value, fh); err != nil {
+				return errors.Wrapf(err, "add attachment %q", fn)
+			}
 			return nil
 		},
 	}
 
-	issueCmd := &ffcli.Command{Name: "issue", ShortUsage: "do sth on issues",
-		Subcommands: []*ffcli.Command{existCmd, getIssuesCmd, getMonitorsCmd},
+	issueListAttachmentsCmd := &ffcli.Command{Name: "attachments", ShortUsage: "list attachments",
+		Exec: func(ctx context.Context, args []string) error {
+			issueID, err := strconv.Atoi(args[0])
+			if err != nil {
+				return err
+			}
+			issue, err := cl.IssueGet(ctx, issueID)
+			if err != nil {
+				return err
+			}
+			return E(issue.Attachments)
+		},
+	}
+	issueDownloadAttachmentCmd := &ffcli.Command{Name: "download", ShortUsage: "download attachemnts of the issue",
+		Exec: func(ctx context.Context, args []string) error {
+			issueID, err := strconv.Atoi(args[0])
+			if err != nil {
+				return err
+			}
+
+			issue, err := cl.IssueGet(ctx, issueID)
+			if err != nil {
+				return err
+			}
+			for _, att := range issue.Attachments {
+				return E(att.DownloadURL)
+			}
+
+			return nil
+		},
 	}
 
-	addMonitorsCmd := issueCmd.Command("addmonitor", "add monitor").Alias("add_monitor")
-	addMonitorsIssueID := addMonitorsCmd.Arg("issueid", "Issue ID to add monitor to").Int()
-	plusMonitors := addMonitorsCmd.Arg("plus_monitors", "names of plus monitors").Strings()
-	addAttachmentCmd := issueCmd.Command("attach", "attach a file to the issue")
-	addAttachmentIssueID := addAttachmentCmd.Arg("issueid", "Issue ID to attach the file to").Int()
-	addAttachmentFile := addAttachmentCmd.Arg("file", "file to attach").ExistingFile()
-	issueListAttachmentsCmd := issueCmd.Command("attachments", "list attachments")
-	issueListAttachmentsIssueID := issueListAttachmentsCmd.Arg("issueid", "issue to list attachments of").Int()
-	issueDownloadAttachmentCmd := issueCmd.Command("download", "download attachemnts of the issue")
-	issueDownloadAttachmentIssueID := issueDownloadAttachmentCmd.Arg("issueid", "issue to download attachments of").Int()
+	addMonitorsCmd := &ffcli.Command{Name: "add", ShortUsage: "add monitor",
+		Exec: func(ctx context.Context, args []string) error {
+			issueID, err := strconv.Atoi(args[0])
+			if err != nil {
+				return err
+			}
+			return addMonitors(ctx, cl, issueID, args[1:])
+		},
+	}
 
-	attachmentCmd := app.Command("attachment", "do sth with attachments")
-	attachmentAddCmd := attachmentCmd.Command("add", "add attachment")
-	attachmentAddIssueID := attachmentAddCmd.Arg("issueid", "issue ID to attach to").Int()
-	attachmentAddFile := attachmentAddCmd.Arg("file", "file to attach").ExistingFile()
-	attachmentListCmd := attachmentCmd.Command("list", "list attachments").Default()
-	attachmentListIssueID := attachmentListCmd.Arg("issueid", "issueID to list attachments of").Int()
-	attachmentDownloadCmd := attachmentCmd.Command("download", "download attachments")
-	attachmentDownloadIssueID := attachmentDownloadCmd.Arg("issueid", "issueID to download attachments of").Int()
+	issueCmd := &ffcli.Command{Name: "issue", ShortUsage: "do sth on issues",
+		Subcommands: []*ffcli.Command{
+			existCmd, getIssuesCmd,
+			getMonitorsCmd,
+			addAttachmentCmd, issueListAttachmentsCmd, issueDownloadAttachmentCmd,
+		},
+	}
 
-	monitorsCmd := app.Command("monitor", "do sth with monitors").Alias("monitors")
-	listMonitorsCmd := monitorsCmd.Command("list", "list monitors").Default()
-	listMonitorsIssueID := listMonitorsCmd.Arg("issueid", "Issue ID to list monitor of").Int()
-	addMonitors2 := monitorsCmd.Command("add", "add monitor")
-	addMonitors2IssueID := addMonitors2.Arg("issueid", "Issue ID to add monitor to").Int()
-	plusMonitors2 := addMonitors2.Arg("plus_monitors", "names of plus monitors").Strings()
+	addNoteCmd := &ffcli.Command{
+		Name: "add", ShortUsage: "add a note to an issue",
+		Exec: func(ctx context.Context, args []string) error {
+			issueID, err := strconv.Atoi(args[0])
+			if err != nil {
+				return err
+			}
+			args = args[1:]
+			noteID, err := cl.IssueNoteAdd(ctx, issueID, mantis.IssueNoteData{
+				Reporter: cl.User,
+				Text:     strings.Join(args, " "),
+			})
+			if err != nil {
+				return err
+			}
+			logger.Log("msg", "added", "note", noteID)
+			return nil
+		},
+	}
+	noteCmd := ffcli.Command{Name: "note", ShortUsage: "do sth with notes",
+		Subcommands: []*ffcli.Command{addNoteCmd},
+	}
 
-	noteCmd := app.Command("note", "do sth with notes").Alias("notes")
-	addNoteCmd := ffcli.Command{Name:add,ShortUsage:"add a note to an issue",
-		noteID, err := cl.IssueNoteAdd(ctx, *addNoteIssueID, mantis.IssueNoteData{
-			Reporter: cl.User,
-			Text:     strings.Join(*addNoteText, " "),
-		})
-		if err != nil {
+	listProjectsCmd := &ffcli.Command{Name: "list", ShortUsage: "list projects",
+		Exec: func(ctx context.Context, args []string) error {
+			projects, err := cl.ProjectsGetUserAccessible(ctx)
+			if err != nil {
+				return err
+			}
+			return E(projects)
+		},
+	}
+
+	pVersionsListCmd := &ffcli.Command{Name: "list", ShortUsage: "list project versions",
+		Exec: func(ctx context.Context, args []string) error {
+			projectID, err := strconv.Atoi(args[0])
+			if err != nil {
+				return err
+			}
+			versions, err := cl.ProjectVersionsList(ctx, projectID)
+			enc := json.NewEncoder(os.Stdout)
+			for _, v := range versions {
+				enc.Encode(v)
+			}
 			return err
-		}
-		logger.Log("msg", "added", "note", noteID)
-	addNoteIssueID := addNoteCmd.Arg("issueid", "Issue ID to add the note to").Int()
-	addNoteText := addNoteCmd.Arg("text", "text to add as note").Strings()
+		},
+	}
 
-	projectsCmd := app.Command("project", "do sth with projects").Alias("projects")
-	listProjectsCmd := projectsCmd.Command("list", "list projects").Default()
+	fs := flag.NewFlagSet("project-version-add", flag.ContinueOnError)
+	pVersionsAddProjectID := fs.Int("project", 0, "project id")
+	pVersionsAddDescription := fs.String("description", "", "version description")
+	pVersionsAddReleased := fs.Bool("released", false, "released?")
+	pVersionsAddObsolete := fs.Bool("obsolete", false, "obsolete?")
+	pVersionsAddCmd := &ffcli.Command{Name: "add", ShortUsage: "add project version", FlagSet: fs,
+		Exec: func(ctx context.Context, args []string) error {
+			id, err := cl.ProjectVersionAdd(ctx, *pVersionsAddProjectID, args[0], *pVersionsAddDescription, *pVersionsAddReleased, *pVersionsAddObsolete, nil)
+			fmt.Println(id)
+			return err
+		},
+	}
 
-	projectVersionsCmd := projectsCmd.Command("versions", "do sth with versions").Alias("version")
-	pVersionsListCmd := projectVersionsCmd.Command("list", "list project versions")
-	pVersionsListProjectID := pVersionsListCmd.Arg("project-id", "project ID").Required().Int()
+	pVersionsDeleteCmd := &ffcli.Command{Name: "delete", ShortUsage: "delete project version",
+		Exec: func(ctx context.Context, args []string) error {
+			projectID, err := strconv.Atoi(args[0])
+			if err != nil {
+				return err
+			}
+			return cl.ProjectVersionDelete(ctx, projectID)
+		},
+	}
 
-	pVersionsAddCmd := projectVersionsCmd.Command("add", "add project version")
-	pVersionsAddName := pVersionsAddCmd.Arg("name", "version name").String()
-	pVersionsAddProjectID := pVersionsAddCmd.Flag("project", "project id").Required().Int()
-	pVersionsAddDescription := pVersionsAddCmd.Flag("description", "version description").String()
-	pVersionsAddReleased := pVersionsAddCmd.Flag("released", "released?").Bool()
-	pVersionsAddObsolete := pVersionsAddCmd.Flag("obsolete", "obsolete?").Bool()
+	projectVersionsCmd := &ffcli.Command{Name: "versions", ShortUsage: "do sth with versions",
+		Subcommands: []*ffcli.Command{pVersionsListCmd, pVersionsAddCmd, pVersionsDeleteCmd},
+	}
 
-	pVersionsDeleteCmd := projectVersionsCmd.Command("delete", "delete project version")
-	pVersionsDeleteVersionID := pVersionsDeleteCmd.Arg("version-id", "version id").Int()
+	projectsCmd := &ffcli.Command{Name: "project", ShortUsage: "do sth with projects",
+		Subcommands: []*ffcli.Command{listProjectsCmd, projectVersionsCmd},
+	}
 
-	usersCmd := app.Command("users", "do sth with users").Alias("user")
-	listUsersCmd := usersCmd.Command("list", "list users").Default()
-	usersProjectID := listUsersCmd.Arg("project", "project ID").Default("1").Int()
-	usersAccessLevel := listUsersCmd.Flag("access-level", "access level threshold").Default("10").Int()
+	usersAccessLevel := fs.Int("access-level", 10, "access level threshold")
+	listUsersCmd := &ffcli.Command{Name: "list", ShortUsage: "list users", FlagSet: fs,
+		Exec: func(ctx context.Context, args []string) error {
+			projectID := 1
+			if len(args) != 0 {
+				var err error
+				if projectID, err = strconv.Atoi(args[0]); err != nil {
+					return err
+				}
+			}
+			users, err := cl.ProjectGetUsers(ctx, projectID, *usersAccessLevel)
+			if err != nil {
+				return err
+			}
+			return E(users)
+		},
+	}
+	usersCmd := &ffcli.Command{Name: "user", ShortUsage: "do sth with users",
+		Subcommands: []*ffcli.Command{listUsersCmd},
+	}
 
-	var cl     mantis.Client
+	fs = flag.NewFlagSet("mantiscli", flag.ContinueOnError)
+	appVerbose := fs.Bool("v", false, "verbose logging")
+	URL := fs.String("mantis", "", "Mantis URL")
+	username := fs.String("user", os.Getenv("USER"), "Mantis user name")
+	passwordEnv := fs.String("password-env", "MC_PASSWORD", "Environment variable's name for the password")
+	configFile := fs.String("config", os.ExpandEnv("/home/$USER/.config/mantiscli.json"), "config file with the stored password")
+
+	app := ffcli.Command{Name: "mantiscli", ShortUsage: "Mantis Command-Line Interface", FlagSet: fs,
+		Subcommands: []*ffcli.Command{projectsCmd, usersCmd},
+	}
 
 	if err := app.Parse(os.Args[1:]); err != nil {
 		return err
 	}
 
-		passw := os.Getenv(*passwordEnv)
-		var conf Config
-		if passw == "" && *configFile != "" {
-			var err error
-			if conf, err = loadConfig(*configFile); err != nil {
-				logger.Log("msg", "load config", "file", *configFile, "error", err)
-			} else {
-				passw = conf.Passwd[*username]
-			}
-		}
+	ctx, cancel := globalctx.Wrap(context.Background())
+	defer cancel()
 
-		var u string
-		if u2 := *URL; u2 != nil {
-			u = u2.String()
-		}
-		if passw == "" {
-			fmt.Printf("Password for %q at %q: ", *username, u)
-			if b, err := terminal.ReadPassword(0); err != nil {
-				return errors.Wrap(err, "read password")
-			} else {
-				passw = string(b)
-				if conf.Passwd == nil {
-					conf.Passwd = map[string]string{*username: passw}
-				} else {
-					conf.Passwd[*username] = passw
-				}
-			}
-			fmt.Printf("\n")
-		}
-		ctx, cancel = C(30)
+	passw := os.Getenv(*passwordEnv)
+	var conf Config
+	if passw == "" && *configFile != "" {
 		var err error
-		if cl, err = mantis.New(ctx, u, *username, passw); err != nil {
-			cancel()
-			return err
+		if conf, err = loadConfig(*configFile); err != nil {
+			logger.Log("msg", "load config", "file", *configFile, "error", err)
+		} else {
+			passw = conf.Passwd[*username]
 		}
-		if *appVerbose {
-			cl.Logger = log.With(logger, "lib", "mantis-soap")
-		}
-		if *configFile != "" {
-			Log := log.With(logger, "file", configFile).Log
-			os.MkdirAll(filepath.Dir(*configFile), 0700)
-			fh, err := os.OpenFile(*configFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-			if err != nil {
-				Log("msg", "create", "error", err)
+	}
+
+	u := *URL
+	if passw == "" {
+		fmt.Printf("Password for %q at %q: ", *username, u)
+		if b, err := terminal.ReadPassword(0); err != nil {
+			return errors.Wrap(err, "read password")
+		} else {
+			passw = string(b)
+			if conf.Passwd == nil {
+				conf.Passwd = map[string]string{*username: passw}
 			} else {
-				if err = json.NewEncoder(fh).Encode(conf); err != nil {
-					Log("msg", "encode", "config", conf, "error", err)
-				} else if closeErr := fh.Close(); closeErr != nil {
-					Log("msg", "close", "error", err)
-				}
+				conf.Passwd[*username] = passw
 			}
 		}
+		fmt.Printf("\n")
+	}
+	var err error
+	if cl, err = mantis.New(ctx, u, *username, passw); err != nil {
+		cancel()
+		return err
+	}
+	if *appVerbose {
+		cl.Logger = log.With(logger, "lib", "mantis-soap")
+	}
+	if *configFile != "" {
+		Log := log.With(logger, "file", configFile).Log
+		os.MkdirAll(filepath.Dir(*configFile), 0700)
+		fh, err := os.OpenFile(*configFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+		if err != nil {
+			Log("msg", "create", "error", err)
+		} else {
+			if err = json.NewEncoder(fh).Encode(conf); err != nil {
+				Log("msg", "encode", "config", conf, "error", err)
+			} else if closeErr := fh.Close(); closeErr != nil {
+				Log("msg", "close", "error", err)
+			}
+		}
+	}
 
 	args := os.Args[1:]
 	enc := term.GetTTYEncoding()
@@ -268,131 +383,6 @@ func Main() error {
 	//logger.Log("args", args)
 
 	return app.Run(ctx)
-}
-
-	case getMonitorsCmd.FullCommand(), listMonitorsCmd.FullCommand():
-
-	case getIssuesCmd.FullCommand():
-
-	case addNoteCmd.FullCommand():
-		ctx, cancel := C(10)
-		defer cancel()
-
-	case listProjectsCmd.FullCommand():
-		ctx, cancel := C(10)
-		defer cancel()
-		projects, err := cl.ProjectsGetUserAccessible(ctx)
-		if err != nil {
-			return err
-		}
-		E(projects)
-
-	case listUsersCmd.FullCommand():
-		ctx, cancel := C(10)
-		defer cancel()
-		users, err := cl.ProjectGetUsers(ctx, *usersProjectID, *usersAccessLevel)
-		if err != nil {
-			return err
-		}
-		E(users)
-
-	case addMonitorsCmd.FullCommand(), addMonitors2.FullCommand():
-		issueID, plus := *addMonitorsIssueID, *plusMonitors
-		if cmd == addMonitors2.FullCommand() {
-			issueID, plus = *addMonitors2IssueID, *plusMonitors2
-		}
-		ctx, cancel := C(10)
-		err := addMonitors(ctx, cl, issueID, plus)
-		cancel()
-		return err
-
-	case addAttachmentCmd.FullCommand(), attachmentAddCmd.FullCommand():
-		issueID, fn := *addAttachmentIssueID, *addAttachmentFile
-		if issueID == 0 {
-			issueID, fn = *attachmentAddIssueID, *attachmentAddFile
-		}
-		ctx, cancel := C(30)
-		defer cancel()
-		issue, err := cl.IssueGet(ctx, issueID)
-		if err != nil {
-			return err
-		}
-		for _, at := range issue.Attachments {
-			if at.FileName == fn && at.Size > 0 {
-				logger.Log("msg", "Attachment already there.", "file", fn)
-				return nil
-			}
-		}
-		fh, err := os.Open(fn)
-		if err != nil {
-			return err
-		}
-		defer fh.Close()
-
-		t, err := filetype.MatchReader(fh)
-		if err != nil {
-			return err
-		}
-		if _, err = fh.Seek(0, 0); err != nil {
-			return err
-		}
-		if _, err := cl.IssueAttachmentAdd(ctx, issueID, filepath.Base(fn), t.MIME.Value, fh); err != nil {
-			return errors.Wrapf(err, "add attachment %q", fn)
-		}
-		return nil
-
-	case issueListAttachmentsCmd.FullCommand(), attachmentListCmd.FullCommand():
-		issueID := *issueListAttachmentsIssueID
-		if issueID == 0 {
-			issueID = *attachmentListIssueID
-		}
-		ctx, cancel := C(10)
-		defer cancel()
-		issue, err := cl.IssueGet(ctx, issueID)
-		if err != nil {
-			return err
-		}
-		E(issue.Attachments)
-
-	case issueDownloadAttachmentCmd.FullCommand(), attachmentDownloadCmd.FullCommand():
-		issueID := *issueDownloadAttachmentIssueID
-		if issueID == 0 {
-			issueID = *attachmentDownloadIssueID
-		}
-		ctx, cancel := C(30)
-		defer cancel()
-		issue, err := cl.IssueGet(ctx, issueID)
-		if err != nil {
-			return err
-		}
-		for _, att := range issue.Attachments {
-			E(att.DownloadURL)
-		}
-
-	case pVersionsListCmd.FullCommand():
-		ctx, cancel := C(10)
-		defer cancel()
-		versions, err := cl.ProjectVersionsList(ctx, *pVersionsListProjectID)
-		enc := json.NewEncoder(os.Stdout)
-		for _, v := range versions {
-			enc.Encode(v)
-		}
-		return err
-
-	case pVersionsAddCmd.FullCommand():
-		ctx, cancel := C(10)
-		defer cancel()
-		id, err := cl.ProjectVersionAdd(ctx, *pVersionsAddProjectID, *pVersionsAddName, *pVersionsAddDescription, *pVersionsAddReleased, *pVersionsAddObsolete, nil)
-		fmt.Println(id)
-		return err
-
-	case pVersionsDeleteCmd.FullCommand():
-		ctx, cancel := C(10)
-		defer cancel()
-		return cl.ProjectVersionDelete(ctx, *pVersionsDeleteVersionID)
-	}
-
-	return nil
 }
 
 func addMonitors(ctx context.Context, cl mantis.Client, issueID int, plusMonitors []string) error {
