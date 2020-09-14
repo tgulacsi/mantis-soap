@@ -199,7 +199,7 @@ func Main() error {
 	issueCmd := &ffcli.Command{Name: "issue", ShortUsage: "do sth on issues",
 		Subcommands: []*ffcli.Command{
 			existCmd, getIssuesCmd,
-			getMonitorsCmd,
+			getMonitorsCmd, addMonitorsCmd,
 			addAttachmentCmd, issueListAttachmentsCmd, issueDownloadAttachmentCmd,
 		},
 	}
@@ -223,7 +223,7 @@ func Main() error {
 			return nil
 		},
 	}
-	noteCmd := ffcli.Command{Name: "note", ShortUsage: "do sth with notes",
+	noteCmd := &ffcli.Command{Name: "note", ShortUsage: "do sth with notes",
 		Subcommands: []*ffcli.Command{addNoteCmd},
 	}
 
@@ -312,7 +312,7 @@ func Main() error {
 	configFile := fs.String("config", os.ExpandEnv("/home/$USER/.config/mantiscli.json"), "config file with the stored password")
 
 	app := ffcli.Command{Name: "mantiscli", ShortUsage: "Mantis Command-Line Interface", FlagSet: fs,
-		Subcommands: []*ffcli.Command{projectsCmd, usersCmd},
+		Subcommands: []*ffcli.Command{issueCmd, noteCmd, projectsCmd, usersCmd},
 	}
 
 	if err := app.Parse(os.Args[1:]); err != nil {
