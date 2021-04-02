@@ -19,10 +19,9 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 type Time time.Time
@@ -75,10 +74,12 @@ func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	go func() {
 		w := base64.NewEncoder(base64.StdEncoding, pw)
 		n, err := io.Copy(w, r.Reader)
-		err = errors.Wrap(err, "base64-encode")
+		if err != nil {
+			err = fmt.Errorf("base64-encode: %w", err)
+		}
 		Log("msg", "copied", "bytes", n, "error", err)
 		if closeErr := w.Close(); closeErr != nil && err == nil {
-			err = errors.Wrap(closeErr, "close base64-encoder")
+			err = fmt.Errorf("close base64-encoder: %w", closeErr)
 		}
 		pw.CloseWithError(err)
 	}()
@@ -99,7 +100,7 @@ func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 		}
 	}
 	if closeErr := e.EncodeToken(start.End()); closeErr != nil && err == nil {
-		return errors.Wrap(closeErr, "closing token")
+		return fmt.Errorf("closing token: %w", closeErr)
 	}
 	return err
 }

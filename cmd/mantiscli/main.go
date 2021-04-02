@@ -1,4 +1,4 @@
-// Copyright 2017, 2020 Tamás Gulácsi. All rights reserved.
+// Copyright 2017, 2021 Tamás Gulácsi. All rights reserved.
 
 //go:generate go get github.com/hooklift/gowsdl/cmd/gowsdl
 //go:generate wget -O mantis.wsdl.raw -q "https://www.unosoft.hu/mantis/kobe/api/soap/mantisconnect.php?wsdl"
@@ -27,7 +27,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/peterbourgon/ff/v3/ffcli"
-	"github.com/pkg/errors"
 
 	"github.com/tgulacsi/go/globalctx"
 	"github.com/tgulacsi/go/loghlp/kitloghlp"
@@ -54,7 +53,7 @@ func Main() error {
 			i, err := strconv.Atoi(a)
 			if err != nil {
 				if firstErr == nil {
-					firstErr = errors.Errorf("%q: %w", a, err)
+					firstErr = fmt.Errorf("%q: %w", a, err)
 				}
 				continue
 			}
@@ -148,7 +147,7 @@ func Main() error {
 				return err
 			}
 			if _, err := cl.IssueAttachmentAdd(ctx, issueID, filepath.Base(fn), t.MIME.Value, fh); err != nil {
-				return errors.Wrapf(err, "add attachment %q", fn)
+				return fmt.Errorf( "add attachment %q: %w", fn, err)
 			}
 			return nil
 		},
@@ -337,7 +336,7 @@ func Main() error {
 	if passw == "" {
 		fmt.Printf("Password for %q at %q: ", *username, u)
 		if b, err := terminal.ReadPassword(0); err != nil {
-			return errors.Wrap(err, "read password")
+			return fmt.Errorf( "read password: %w", err)
 		} else {
 			passw = string(b)
 			if conf.Passwd == nil {

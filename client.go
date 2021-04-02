@@ -1,4 +1,4 @@
-// Copyright 2016, 2020 Tamás Gulácsi
+// Copyright 2016, 2021 Tamás Gulácsi
 //
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +18,13 @@ package mantis
 import (
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
 	"unsafe"
 
 	"github.com/go-kit/kit/log"
-	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/soaphlp"
 	"golang.org/x/net/context"
 )
@@ -77,7 +77,7 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	defer bufPool.Put(buf)
 
 	if err := xml.NewEncoder(buf).Encode(request); err != nil {
-		return errors.Wrapf(err, "marshal %#v", request)
+		return fmt.Errorf("marshal %#v: %w", request, err)
 	}
 	resp := bufPool.Get()
 	defer bufPool.Put(resp)
@@ -86,11 +86,11 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	}
 	d, err := c.Caller.Call(ctx, resp, method, bytes.NewReader(buf.Bytes()))
 	if err != nil {
-		return errors.Wrap(err, buf.String())
+		return fmt.Errorf("call %s: %w", buf.String(), err)
 	}
 	buf.Reset()
 	if err := d.Decode(response); err != nil {
-		return errors.Wrap(err, resp.String())
+		return fmt.Errorf("response: %s: %w", resp.String(), err)
 	}
 	return nil
 }
