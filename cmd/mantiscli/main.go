@@ -1,4 +1,6 @@
 // Copyright 2017, 2021 Tamás Gulácsi. All rights reserved.
+//
+// SPDX-License-Identifier: Apache-2.0
 
 //go:generate go get github.com/hooklift/gowsdl/cmd/gowsdl
 //go:generate wget -O mantis.wsdl.raw -q "https://www.unosoft.hu/mantis/kobe/api/soap/mantisconnect.php?wsdl"
@@ -19,7 +21,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/net/context"
@@ -147,7 +148,7 @@ func Main() error {
 				return err
 			}
 			if _, err := cl.IssueAttachmentAdd(ctx, issueID, filepath.Base(fn), t.MIME.Value, fh); err != nil {
-				return fmt.Errorf( "add attachment %q: %w", fn, err)
+				return fmt.Errorf("add attachment %q: %w", fn, err)
 			}
 			return nil
 		},
@@ -166,7 +167,7 @@ func Main() error {
 			return E(issue.Attachments)
 		},
 	}
-	issueDownloadAttachmentCmd := &ffcli.Command{Name: "download", ShortUsage: "download attachemnts of the issue",
+	issueDownloadAttachmentCmd := &ffcli.Command{Name: "download", ShortUsage: "download attachments of the issue",
 		Exec: func(ctx context.Context, args []string) error {
 			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
@@ -336,7 +337,7 @@ func Main() error {
 	if passw == "" {
 		fmt.Printf("Password for %q at %q: ", *username, u)
 		if b, err := terminal.ReadPassword(0); err != nil {
-			return fmt.Errorf( "read password: %w", err)
+			return fmt.Errorf("read password: %w", err)
 		} else {
 			passw = string(b)
 			if conf.Passwd == nil {
@@ -449,10 +450,6 @@ func E(answer interface{}) error {
 		return err
 	}
 	return nil
-}
-
-func C(seconds int) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), time.Duration(seconds)*time.Second)
 }
 
 // vim: set fileencoding=utf-8 noet:
