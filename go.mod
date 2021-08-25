@@ -1,6 +1,7 @@
 module github.com/tgulacsi/mantis-soap
 
 require (
+	github.com/UNO-SOFT/ulog v1.3.0 // indirect
 	github.com/go-kit/kit v0.10.0
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/tgulacsi/go v0.18.1

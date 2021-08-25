@@ -18,7 +18,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-var Log = func(keyvals ...interface{}) error { return nil }
+var Logger = &log.SwapLogger{}
 
 func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, password string) (Client, error) {
 	select {

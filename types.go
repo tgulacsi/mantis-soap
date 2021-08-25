@@ -59,7 +59,9 @@ type Reader struct {
 }
 
 func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	e.EncodeToken(start)
+	if err := e.EncodeToken(start); err != nil {
+		return err
+	}
 	pr, pw := io.Pipe()
 	go func() {
 		w := base64.NewEncoder(base64.StdEncoding, pw)
@@ -67,20 +69,22 @@ func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 		if err != nil {
 			err = fmt.Errorf("base64-encode: %w", err)
 		}
-		Log("msg", "copied", "bytes", n, "error", err)
+		Logger.Log("msg", "copied", "bytes", n, "error", err)
 		if closeErr := w.Close(); closeErr != nil && err == nil {
 			err = fmt.Errorf("close base64-encoder: %w", closeErr)
 		}
-		pw.CloseWithError(err)
+		_ = pw.CloseWithError(err)
 	}()
 	p := make([]byte, 4096)
 	var n int
 	var err error
 	for {
 		n, err = pr.Read(p)
-		Log("msg", "read", "bytes", n, "error", err)
+		Logger.Log("msg", "read", "bytes", n, "error", err)
 		if n > 0 {
-			e.EncodeToken(xml.CharData(p[:n]))
+			if encErr := e.EncodeToken(xml.CharData(p[:n])); encErr != nil && err == nil {
+				err = encErr
+			}
 		}
 		if err != nil {
 			if errors.Is(err, io.EOF) {
