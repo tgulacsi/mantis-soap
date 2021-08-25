@@ -22,6 +22,22 @@ func (t *Time) IsZero() bool {
 
 const timePattern = time.RFC3339
 
+func (t *Time) MarshalJSON() ([]byte, error) {
+	if t == nil || t.IsZero() {
+		return []byte("null"), nil
+	}
+	b := make([]byte, 1, 32)
+	b[0] = '"'
+	b = (*time.Time)(t).AppendFormat(b, time.RFC3339)
+	return append(b, '"'), nil
+}
+func (t *Time) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	if t == nil || t.IsZero() {
+		return nil
+	}
+	return e.EncodeElement(((*time.Time)(t)).Format(timePattern), start)
+}
+
 func (t *Time) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	p := make([]byte, 0, 32)
 Loop:
@@ -40,6 +56,10 @@ Loop:
 		}
 	}
 
+	return t.UnmarshalText(p)
+}
+
+func (t *Time) UnmarshalText(p []byte) error {
 	p = bytes.TrimSpace(p)
 	if len(p) == 0 {
 		return nil

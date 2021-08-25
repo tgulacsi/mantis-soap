@@ -259,23 +259,40 @@ func Main() error {
 	pVersionsAddDescription := fs.String("description", "", "version description")
 	pVersionsAddReleased := fs.Bool("released", false, "released?")
 	pVersionsAddObsolete := fs.Bool("obsolete", false, "obsolete?")
+	pVersionsAddDate := fs.String("date", "", "date")
 	pVersionsAddCmd := &ffcli.Command{Name: "add", ShortUsage: "add project version", FlagSet: fs,
 		Exec: func(ctx context.Context, args []string) error {
-			id, err := cl.ProjectVersionAdd(ctx, *pVersionsAddProjectID, args[0], *pVersionsAddDescription, *pVersionsAddReleased, *pVersionsAddObsolete, nil)
+			var date *mantis.Time
+			if *pVersionsAddDate != "" {
+				date = new(mantis.Time)
+				if err := date.UnmarshalText([]byte(*pVersionsAddDate)); err != nil {
+					return err
+				}
+			}
+			id, err := cl.ProjectVersionAdd(ctx, *pVersionsAddProjectID, args[0], *pVersionsAddDescription, *pVersionsAddReleased, *pVersionsAddObsolete, date)
 			fmt.Println(id)
 			return err
 		},
 	}
 
+	fs = flag.NewFlagSet("project-version-add", flag.ContinueOnError)
 	pVersionsUpdateProjectID := fs.Int("project", 0, "project id")
 	pVersionsUpdateDescription := fs.String("description", "", "version description")
 	pVersionsUpdateReleased := fs.Bool("released", false, "released?")
 	pVersionsUpdateObsolete := fs.Bool("obsolete", false, "obsolete?")
-	pVersionsUpdateCmd := &ffcli.Command{Name: "update", ShortUsage: "update project version",
+	pVersionsUpdateDate := fs.String("date", "", "date")
+	pVersionsUpdateCmd := &ffcli.Command{Name: "update", ShortUsage: "update project version", FlagSet: fs,
 		Exec: func(ctx context.Context, args []string) error {
 			id, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
+			}
+			var date *mantis.Time
+			if *pVersionsUpdateDate != "" {
+				date = new(mantis.Time)
+				if err := date.UnmarshalText([]byte(*pVersionsUpdateDate)); err != nil {
+					return err
+				}
 			}
 			err = cl.ProjectVersionUpdate(ctx, mantis.ProjectVersionData{
 				ID:          id,
@@ -284,6 +301,7 @@ func Main() error {
 				Description: *pVersionsUpdateDescription,
 				Released:    *pVersionsUpdateReleased,
 				Obsolete:    *pVersionsUpdateObsolete,
+				DateOrder:   date,
 			})
 			return err
 		},
