@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -23,19 +24,18 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/ssh/terminal"
-	"golang.org/x/net/context"
 	"gopkg.in/h2non/filetype.v1"
 
+	"github.com/UNO-SOFT/ulog"
 	"github.com/go-kit/kit/log"
 	"github.com/peterbourgon/ff/v3/ffcli"
 
 	"github.com/tgulacsi/go/globalctx"
-	"github.com/tgulacsi/go/loghlp/kitloghlp"
 	"github.com/tgulacsi/go/term"
 	"github.com/tgulacsi/mantis-soap"
 )
 
-var logger = kitloghlp.New(os.Stderr)
+var logger = ulog.New()
 
 func main() {
 	if err := Main(); err != nil {
@@ -246,7 +246,9 @@ func Main() error {
 			versions, err := cl.ProjectVersionsList(ctx, projectID)
 			enc := json.NewEncoder(os.Stdout)
 			for _, v := range versions {
-				enc.Encode(v)
+				if encErr := enc.Encode(v); encErr != nil && err == nil {
+					err = encErr
+				}
 			}
 			return err
 		},
@@ -265,6 +267,28 @@ func Main() error {
 		},
 	}
 
+	pVersionsUpdateProjectID := fs.Int("project", 0, "project id")
+	pVersionsUpdateDescription := fs.String("description", "", "version description")
+	pVersionsUpdateReleased := fs.Bool("released", false, "released?")
+	pVersionsUpdateObsolete := fs.Bool("obsolete", false, "obsolete?")
+	pVersionsUpdateCmd := &ffcli.Command{Name: "update", ShortUsage: "update project version",
+		Exec: func(ctx context.Context, args []string) error {
+			id, err := strconv.Atoi(args[0])
+			if err != nil {
+				return err
+			}
+			err = cl.ProjectVersionUpdate(ctx, mantis.ProjectVersionData{
+				ID:          id,
+				Name:        args[1],
+				ProjectID:   *pVersionsUpdateProjectID,
+				Description: *pVersionsUpdateDescription,
+				Released:    *pVersionsUpdateReleased,
+				Obsolete:    *pVersionsUpdateObsolete,
+			})
+			return err
+		},
+	}
+
 	pVersionsDeleteCmd := &ffcli.Command{Name: "delete", ShortUsage: "delete project version",
 		Exec: func(ctx context.Context, args []string) error {
 			projectID, err := strconv.Atoi(args[0])
@@ -276,7 +300,7 @@ func Main() error {
 	}
 
 	projectVersionsCmd := &ffcli.Command{Name: "versions", ShortUsage: "do sth with versions",
-		Subcommands: []*ffcli.Command{pVersionsListCmd, pVersionsAddCmd, pVersionsDeleteCmd},
+		Subcommands: []*ffcli.Command{pVersionsListCmd, pVersionsAddCmd, pVersionsDeleteCmd, pVersionsUpdateCmd},
 	}
 
 	projectsCmd := &ffcli.Command{Name: "project", ShortUsage: "do sth with projects",
@@ -355,18 +379,19 @@ func Main() error {
 	}
 	if *appVerbose {
 		cl.Logger = log.With(logger, "lib", "mantis-soap")
+		mantis.Logger.Swap(cl.Logger)
 	}
 	if *configFile != "" {
-		Log := log.With(logger, "file", configFile).Log
-		os.MkdirAll(filepath.Dir(*configFile), 0700)
+		logger := log.With(logger, "file", configFile)
+		_ = os.MkdirAll(filepath.Dir(*configFile), 0700)
 		fh, err := os.OpenFile(*configFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 		if err != nil {
-			Log("msg", "create", "error", err)
+			logger.Log("msg", "create", "error", err)
 		} else {
 			if err = json.NewEncoder(fh).Encode(conf); err != nil {
-				Log("msg", "encode", "config", conf, "error", err)
+				logger.Log("msg", "encode", "config", conf, "error", err)
 			} else if closeErr := fh.Close(); closeErr != nil {
-				Log("msg", "close", "error", err)
+				logger.Log("msg", "close", "error", err)
 			}
 		}
 	}
@@ -418,10 +443,12 @@ func addMonitors(ctx context.Context, cl mantis.Client, issueID int, plusMonitor
 		exists[p] = struct{}{}
 		n++
 	}
-	E(issue.Monitors)
+	if encErr := E(issue.Monitors); encErr != nil && err == nil {
+		err = encErr
+	}
 
-	if n == 0 {
-		return nil
+	if n == 0 || err != nil {
+		return err
 	}
 	issue.CustomFields, issue.Attachments, issue.Notes = nil, nil, nil
 	_, err = cl.IssueUpdate(ctx, issueID, issue)
