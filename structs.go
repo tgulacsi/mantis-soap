@@ -137,7 +137,7 @@ type ProjectGetVersionsResponse struct {
 	Return  []ProjectVersionData `xml:"return>item"`
 }
 type ProjectVersionAddRequest struct {
-	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_addRequest"`
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_add"`
 	Auth
 	Version ProjectVersionData `xml:"version"`
 }
@@ -146,7 +146,7 @@ type ProjectVersionAddResponse struct {
 	Return  int      `xml:"return"`
 }
 type ProjectVersionUpdateRequest struct {
-	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_updateRequest"`
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_update"`
 	Auth
 	VersionID int                `xml:"version_id"`
 	Version   ProjectVersionData `xml:"version"`

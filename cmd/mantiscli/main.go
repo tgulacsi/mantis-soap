@@ -325,6 +325,7 @@ func Main() error {
 		Subcommands: []*ffcli.Command{listProjectsCmd, projectVersionsCmd},
 	}
 
+	fs = flag.NewFlagSet("project-list-users", flag.ContinueOnError)
 	usersAccessLevel := fs.Int("access-level", 10, "access level threshold")
 	listUsersCmd := &ffcli.Command{Name: "list", ShortUsage: "list users", FlagSet: fs,
 		Exec: func(ctx context.Context, args []string) error {
