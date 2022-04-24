@@ -1,4 +1,4 @@
-// Copyright 2016, 2021 Tamás Gulácsi
+// Copyright 2016, 2022 Tamás Gulácsi
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -13,12 +13,14 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-logr/logr"
 	"github.com/tgulacsi/go/soaphlp"
 	"golang.org/x/net/context"
 )
 
-var Logger = &log.SwapLogger{}
+var logger = logr.Discard()
+
+func SetLogger(lgr logr.Logger) { logger = lgr }
 
 func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, password string) (Client, error) {
 	select {
@@ -50,7 +52,7 @@ type Client struct {
 	soaphlp.Caller
 	auth Auth
 	User AccountData
-	log.Logger
+	logr.Logger
 }
 
 func (c Client) Call(ctx context.Context, method string, request, response interface{}) error {
@@ -70,8 +72,8 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	}
 	resp := bufPool.Get()
 	defer bufPool.Put(resp)
-	if c.Logger != nil {
-		ctx = soaphlp.WithLog(ctx, c.Logger.Log)
+	if _, err := logr.FromContext(ctx); err != nil {
+		ctx = logr.NewContext(ctx, c.Logger)
 	}
 	d, err := c.Caller.Call(ctx, resp, method, bytes.NewReader(buf.Bytes()))
 	if err != nil {

@@ -1,4 +1,4 @@
-// Copyright 2015 Tamás Gulácsi
+// Copyright 2015, 2022 Tamás Gulácsi
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -89,7 +89,7 @@ func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 		if err != nil {
 			err = fmt.Errorf("base64-encode: %w", err)
 		}
-		Logger.Log("msg", "copied", "bytes", n, "error", err)
+		logger.V(1).Info("copied", "bytes", n, "error", err)
 		if closeErr := w.Close(); closeErr != nil && err == nil {
 			err = fmt.Errorf("close base64-encoder: %w", closeErr)
 		}
@@ -100,7 +100,7 @@ func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	var err error
 	for {
 		n, err = pr.Read(p)
-		Logger.Log("msg", "read", "bytes", n, "error", err)
+		logger.V(1).Info("read", "bytes", n, "error", err)
 		if n > 0 {
 			if encErr := e.EncodeToken(xml.CharData(p[:n])); encErr != nil && err == nil {
 				err = encErr

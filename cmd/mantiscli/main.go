@@ -1,4 +1,4 @@
-// Copyright 2017, 2021 Tamás Gulácsi. All rights reserved.
+// Copyright 2017, 2022 Tamás Gulácsi. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -23,23 +23,26 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 	"gopkg.in/h2non/filetype.v1"
 
-	"github.com/UNO-SOFT/ulog"
-	"github.com/go-kit/kit/log"
+	"github.com/go-logr/zerologr"
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/rs/zerolog"
 
 	"github.com/tgulacsi/go/globalctx"
-	"github.com/tgulacsi/go/term"
+	tterm "github.com/tgulacsi/go/term"
 	"github.com/tgulacsi/mantis-soap"
 )
 
-var logger = ulog.New()
+var (
+	zl     = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger().Level(zerolog.InfoLevel)
+	logger = zerologr.New(&zl)
+)
 
 func main() {
 	if err := Main(); err != nil {
-		logger.Log("error", err)
+		logger.Error(err, "Main")
 		os.Exit(1)
 	}
 }
@@ -130,7 +133,7 @@ func Main() error {
 			}
 			for _, at := range issue.Attachments {
 				if at.FileName == fn && at.Size > 0 {
-					logger.Log("msg", "Attachment already there.", "file", fn)
+					logger.Info("Attachment already there.", "file", fn)
 					return nil
 				}
 			}
@@ -219,7 +222,7 @@ func Main() error {
 			if err != nil {
 				return err
 			}
-			logger.Log("msg", "added", "note", noteID)
+			logger.Info("added", "note", noteID)
 			return nil
 		},
 	}
@@ -370,7 +373,7 @@ func Main() error {
 	if passw == "" && *configFile != "" {
 		var err error
 		if conf, err = loadConfig(*configFile); err != nil {
-			logger.Log("msg", "load config", "file", *configFile, "error", err)
+			logger.Error(err, "load config", "file", *configFile)
 		} else {
 			passw = conf.Passwd[*username]
 		}
@@ -379,7 +382,7 @@ func Main() error {
 	u := *URL
 	if passw == "" {
 		fmt.Printf("Password for %q at %q: ", *username, u)
-		if b, err := terminal.ReadPassword(0); err != nil {
+		if b, err := term.ReadPassword(0); err != nil {
 			return fmt.Errorf("read password: %w", err)
 		} else {
 			passw = string(b)
@@ -397,34 +400,34 @@ func Main() error {
 		return err
 	}
 	if *appVerbose {
-		cl.Logger = log.With(logger, "lib", "mantis-soap")
-		mantis.Logger.Swap(cl.Logger)
+		cl.Logger = logger.WithName("mantis-soap")
+		mantis.SetLogger(cl.Logger)
 	}
 	if *configFile != "" {
-		logger := log.With(logger, "file", configFile)
+		logger := logger.WithValues("file", configFile)
 		_ = os.MkdirAll(filepath.Dir(*configFile), 0700)
 		fh, err := os.OpenFile(*configFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 		if err != nil {
-			logger.Log("msg", "create", "error", err)
+			logger.Error(err, "create")
 		} else {
 			if err = json.NewEncoder(fh).Encode(conf); err != nil {
-				logger.Log("msg", "encode", "config", conf, "error", err)
+				logger.Error(err, "encode", "config", conf)
 			} else if closeErr := fh.Close(); closeErr != nil {
-				logger.Log("msg", "close", "error", err)
+				logger.Error(err, "close")
 			}
 		}
 	}
 
 	args := os.Args[1:]
-	enc := term.GetTTYEncoding()
+	enc := tterm.GetTTYEncoding()
 	for i, a := range args {
 		var err error
 		if args[i], err = enc.NewDecoder().String(a); err != nil {
-			logger.Log("msg", "Error decoding", "raw", a, "encoding", enc, "error", err)
+			logger.Error(err, "Error decoding", "raw", a, "encoding", enc)
 			args[i] = a
 		}
 	}
-	//logger.Log("args", args)
+	//logger.Info("main", "args", args)
 
 	return app.Run(ctx)
 }
@@ -455,7 +458,7 @@ func addMonitors(ctx context.Context, cl mantis.Client, issueID int, plusMonitor
 		}
 		u, ok := uM[p]
 		if !ok {
-			logger.Log("error", "unknown user "+p)
+			logger.Info("unknown user", "plusMonitor", p)
 			continue
 		}
 		issue.Monitors = append(issue.Monitors, u)
@@ -492,7 +495,7 @@ func E(answer interface{}) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ") // Go1.7
 	if err := enc.Encode(answer); err != nil {
-		logger.Log("msg", "ERROR encoding answer", "error", err)
+		logger.Error(err, "ERROR encoding answer")
 		return err
 	}
 	return nil
