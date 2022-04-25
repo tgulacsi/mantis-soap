@@ -149,6 +149,23 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
+	attachmentAddCmd := ffcli.Command{Name: "add", ShortHelp: "add attachment",
+		Exec: addAttachmentCmd.Exec,
+	}
+
+	attachmentListCmd := ffcli.Command{Name: "list", ShortHelp: "list attachments",
+		Exec: issueListAttachmentsCmd.Exec,
+	}
+
+	attachmentDownloadCmd := ffcli.Command{Name: "download", ShortHelp: "download attachments",
+		Exec: issueDownloadAttachmentCmd.Exec,
+	}
+
+	attachmentCmd := ffcli.Command{Name: "attachment", ShortHelp: "do sth with attachments",
+		Exec:        attachmentListCmd.Exec,
+		Subcommands: []*ffcli.Command{&attachmentAddCmd, &attachmentListCmd, &attachmentDownloadCmd},
+	}
+
 	addMonitorsCmd := &ffcli.Command{Name: "add", ShortUsage: "add monitor",
 		Exec: func(ctx context.Context, args []string) error {
 			issueID, err := strconv.Atoi(args[0])
@@ -312,7 +329,9 @@ func App(cl *mantis.Client) *ffcli.Command {
 
 	fs = flag.NewFlagSet("mantiscli", flag.ContinueOnError)
 	return &ffcli.Command{Name: "mantiscli", ShortUsage: "Mantis Command-Line Interface", FlagSet: fs,
-		Subcommands: []*ffcli.Command{issueCmd, noteCmd, projectsCmd, usersCmd},
+		Subcommands: []*ffcli.Command{
+			&attachmentCmd,
+			issueCmd, noteCmd, projectsCmd, usersCmd},
 	}
 }
 
