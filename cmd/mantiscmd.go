@@ -175,12 +175,47 @@ func App(cl *mantis.Client) *ffcli.Command {
 			return addMonitors(ctx, cl, issueID, args[1:])
 		},
 	}
+	statusCmd := ffcli.Command{Name: "status", ShortHelp: "set issue's status",
+		Exec: func(ctx context.Context, args []string) error {
+			status, err := strconv.Atoi(args[0])
+			if err != nil {
+				return err
+			}
+			issueIDs, err := toInts(args[1:])
+			if err != nil {
+				return err
+			}
+			for _, issueID := range issueIDs {
+				issue, err := cl.IssueGet(ctx, issueID)
+				if err != nil {
+					return err
+				}
+				if issue.Status.ID >= status {
+					fmt.Printf("SKIP %d (%d=%q)\n", issueID, issue.Status.ID, issue.Status.Name)
+					continue
+				}
+				issue.Status.ID, issue.Status.Name = status, ""
+				custFields := make([]mantis.CustomFieldData, 0, len(issue.CustomFields))
+				for _, f := range issue.CustomFields {
+					if f.Value != "" {
+						custFields = append(custFields, f)
+					}
+				}
+				issue.CustomFields = custFields
+				if _, err = cl.IssueUpdate(ctx, issueID, issue); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
 
 	issueCmd := &ffcli.Command{Name: "issue", ShortUsage: "do sth on issues",
 		Subcommands: []*ffcli.Command{
 			existCmd, getIssuesCmd,
 			getMonitorsCmd, addMonitorsCmd,
 			addAttachmentCmd, issueListAttachmentsCmd, issueDownloadAttachmentCmd,
+			&statusCmd,
 		},
 	}
 
