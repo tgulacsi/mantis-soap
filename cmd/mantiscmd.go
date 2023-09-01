@@ -309,16 +309,35 @@ func App(cl *mantis.Client) *ffcli.Command {
 					return err
 				}
 			}
-			err = cl.ProjectVersionUpdate(ctx, mantis.ProjectVersionData{
-				ID:          id,
-				Name:        args[1],
-				ProjectID:   *pVersionsUpdateProjectID,
-				Description: *pVersionsUpdateDescription,
-				Released:    *pVersionsUpdateReleased,
-				Obsolete:    *pVersionsUpdateObsolete,
-				DateOrder:   date,
-			})
-			return err
+			var name string
+			if len(args) > 1 {
+				name = args[1]
+			}
+			versions, err := cl.ProjectVersionsList(ctx, *pVersionsUpdateProjectID)
+			if err != nil {
+				return err
+			}
+			var data mantis.ProjectVersionData
+			for _, v := range versions {
+				if v.ID == id {
+					data = v
+					break
+				}
+			}
+			data.ProjectID, data.ID = *pVersionsUpdateProjectID, id
+			if name != "" {
+				data.Name = name
+			}
+			if *pVersionsUpdateDescription != "" {
+				data.Description = *pVersionsUpdateDescription
+			}
+			if !date.IsZero() {
+				data.DateOrder = date
+			}
+			data.Released = *pVersionsUpdateReleased
+			data.Obsolete = *pVersionsUpdateObsolete
+			logger.Debug("ProjectVersionUpdate", "data", data)
+			return cl.ProjectVersionUpdate(ctx, data)
 		},
 	}
 
