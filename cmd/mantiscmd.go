@@ -9,20 +9,20 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tgulacsi/mantis-soap"
 	"gopkg.in/h2non/filetype.v1"
 )
 
-var logger = logr.Discard()
+var logger = slog.Default()
 
-func SetLogger(lgr logr.Logger) { logger = lgr }
+func SetLogger(lgr *slog.Logger) { logger = lgr }
 
 // App returns an *ffcli.Command usable as app.
 func App(cl *mantis.Client) *ffcli.Command {
@@ -375,7 +375,7 @@ func E(answer interface{}) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ") // Go1.7
 	if err := enc.Encode(answer); err != nil {
-		logger.Error(err, "ERROR encoding answer")
+		logger.Error("ERROR encoding answer", "error", err)
 		return err
 	}
 	return nil

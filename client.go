@@ -30,7 +30,7 @@ func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, p
 	}
 	baseURL += "/api/soap/mantisconnect.php"
 	cl := Client{
-		Caller: soaphlp.NewClient(baseURL, baseURL, c),
+		Caller: soaphlp.NewClient(baseURL, "http://www.mantisbt.org/bugs/api/soap/mantisconnect.php/", c),
 		auth: Auth{
 			Username: username,
 			Password: password,

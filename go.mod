@@ -22,4 +22,6 @@ require (
 	golang.org/x/text v0.11.0 // indirect
 )
 
-go 1.17
+go 1.21
+
+toolchain go1.21.0
