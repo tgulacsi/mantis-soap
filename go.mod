@@ -6,9 +6,9 @@ require (
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/rs/zerolog v1.29.0
 	github.com/tgulacsi/go v0.26.4
+	github.com/zRedShift/mimemagic v1.2.0
 	golang.org/x/net v0.14.0
 	golang.org/x/term v0.11.0
-	gopkg.in/h2non/filetype.v1 v1.0.5
 )
 
 require (

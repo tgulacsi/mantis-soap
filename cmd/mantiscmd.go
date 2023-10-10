@@ -17,7 +17,7 @@ import (
 
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tgulacsi/mantis-soap"
-	"gopkg.in/h2non/filetype.v1"
+	"github.com/zRedShift/mimemagic"
 )
 
 var logger = slog.Default()
@@ -103,14 +103,14 @@ func App(cl *mantis.Client) *ffcli.Command {
 			}
 			defer fh.Close()
 
-			t, err := filetype.MatchReader(fh)
+			t, err := mimemagic.MatchFile(fh)
 			if err != nil {
 				return err
 			}
 			if _, err = fh.Seek(0, 0); err != nil {
 				return err
 			}
-			if _, err := cl.IssueAttachmentAdd(ctx, issueID, filepath.Base(fn), t.MIME.Value, fh); err != nil {
+			if _, err := cl.IssueAttachmentAdd(ctx, issueID, filepath.Base(fn), t.MediaType(), fh); err != nil {
 				return fmt.Errorf("add attachment %q: %w", fn, err)
 			}
 			return nil
