@@ -248,6 +248,21 @@ func App(cl *mantis.Client) *ffcli.Command {
 			if err != nil {
 				return err
 			}
+			if len(args) != 0 {
+				m := make(map[string]int, len(projects))
+				for i := range projects {
+					m[projects[i].Name] = i
+				}
+				pp := make([]mantis.ProjectData, 0, len(args))
+				for _, a := range args {
+					if i, found := m[a]; !found {
+						return fmt.Errorf("%q not found", a)
+					} else {
+						pp = append(pp, projects[i])
+					}
+				}
+				projects = pp
+			}
 			return E(projects)
 		},
 	}
