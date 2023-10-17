@@ -6,21 +6,22 @@ package mantis
 
 import (
 	"bytes"
+	"context"
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"sync"
 	"unsafe"
 
-	"github.com/go-logr/logr"
+	"github.com/UNO-SOFT/zlog/v2"
 	"github.com/tgulacsi/go/soaphlp"
-	"golang.org/x/net/context"
 )
 
-var logger = logr.Discard()
+var logger = slog.Default()
 
-func SetLogger(lgr logr.Logger) { logger = lgr }
+func SetLogger(lgr *slog.Logger) { logger = lgr }
 
 func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, password string) (Client, error) {
 	select {
@@ -52,7 +53,7 @@ type Client struct {
 	soaphlp.Caller
 	auth Auth
 	User AccountData
-	logr.Logger
+	*slog.Logger
 }
 
 func (c Client) Call(ctx context.Context, method string, request, response interface{}) error {
@@ -72,8 +73,8 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	}
 	resp := bufPool.Get()
 	defer bufPool.Put(resp)
-	if _, err := logr.FromContext(ctx); err != nil {
-		ctx = logr.NewContext(ctx, c.Logger)
+	if zlog.SFromContext(ctx) == nil {
+		ctx = zlog.NewSContext(ctx, c.Logger)
 	}
 	d, err := c.Caller.Call(ctx, resp, method, bytes.NewReader(buf.Bytes()))
 	if err != nil {

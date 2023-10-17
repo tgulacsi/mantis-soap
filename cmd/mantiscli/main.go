@@ -22,9 +22,7 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/go-logr/zerologr"
-	"github.com/rs/zerolog"
-
+	"github.com/UNO-SOFT/zlog/v2"
 	"github.com/tgulacsi/go/globalctx"
 	tterm "github.com/tgulacsi/go/term"
 	"github.com/tgulacsi/mantis-soap"
@@ -32,13 +30,13 @@ import (
 )
 
 var (
-	zl     = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger().Level(zerolog.InfoLevel)
-	logger = zerologr.New(&zl)
+	verbose zlog.VerboseVar
+	logger  = zlog.NewLogger(zlog.MaybeConsoleHandler(&verbose, os.Stderr)).SLog()
 )
 
 func main() {
 	if err := Main(); err != nil {
-		logger.Error(err, "Main")
+		logger.Error("Main", "error", err)
 		os.Exit(1)
 	}
 }
@@ -65,7 +63,7 @@ func Main() error {
 	if passw == "" && *configFile != "" {
 		var err error
 		if conf, err = loadConfig(*configFile); err != nil {
-			logger.Error(err, "load config", "file", *configFile)
+			logger.Error("load config", "file", *configFile, "error", err)
 		} else {
 			passw = conf.Passwd[*username]
 		}
@@ -92,20 +90,20 @@ func Main() error {
 		return err
 	}
 	if *appVerbose {
-		cl.Logger = logger.WithName("mantis-soap")
+		cl.Logger = logger.WithGroup("mantis-soap")
 		mantis.SetLogger(cl.Logger)
 	}
 	if *configFile != "" {
-		logger := logger.WithValues("file", configFile)
+		logger := logger.With("file", configFile)
 		_ = os.MkdirAll(filepath.Dir(*configFile), 0700)
 		fh, err := os.OpenFile(*configFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 		if err != nil {
-			logger.Error(err, "create")
+			logger.Error("create", "error", err)
 		} else {
 			if err = json.NewEncoder(fh).Encode(conf); err != nil {
-				logger.Error(err, "encode", "config", conf)
+				logger.Error("encode", "config", conf, "error", err)
 			} else if closeErr := fh.Close(); closeErr != nil {
-				logger.Error(err, "close")
+				logger.Error("close", "error", err)
 			}
 		}
 	}
@@ -115,7 +113,7 @@ func Main() error {
 	for i, a := range args {
 		var err error
 		if args[i], err = enc.NewDecoder().String(a); err != nil {
-			logger.Error(err, "Error decoding", "raw", a, "encoding", enc)
+			logger.Error("Error decoding", "raw", a, "encoding", enc, "error", err)
 			args[i] = a
 		}
 	}
