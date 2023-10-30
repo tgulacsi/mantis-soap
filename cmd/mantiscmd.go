@@ -267,7 +267,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	pVersionsListCmd := &ffcli.Command{Name: "list", ShortUsage: "list project versions",
+	pVersionsListCmd := &ffcli.Command{Name: "list", ShortUsage: "list project versions <projectID>",
 		Exec: func(ctx context.Context, args []string) error {
 			projectID, err := strconv.Atoi(args[0])
 			if err != nil {
@@ -285,13 +285,20 @@ func App(cl *mantis.Client) *ffcli.Command {
 	}
 
 	fs := flag.NewFlagSet("project-version-add", flag.ContinueOnError)
-	pVersionsAddProjectID := fs.Int("project", 0, "project id")
+	// pVersionsAddProjectID := fs.Int("project", 0, "project id")
 	pVersionsAddDescription := fs.String("description", "", "version description")
 	pVersionsAddReleased := fs.Bool("released", false, "released?")
 	pVersionsAddObsolete := fs.Bool("obsolete", false, "obsolete?")
 	pVersionsAddDate := fs.String("date", "", "date")
-	pVersionsAddCmd := &ffcli.Command{Name: "add", ShortUsage: "add project version", FlagSet: fs,
+	pVersionsAddCmd := &ffcli.Command{Name: "add", ShortUsage: "add project version <projectID>", FlagSet: fs,
 		Exec: func(ctx context.Context, args []string) error {
+			if len(args) == 0 {
+				return fmt.Errorf("projectID is required")
+			}
+			projectID, err := strconv.ParseInt(args[0], 10, 32)
+			if err != nil {
+				return fmt.Errorf("parse %q as projectID: %w", args[0], err)
+			}
 			var date *mantis.Time
 			if *pVersionsAddDate != "" {
 				date = new(mantis.Time)
@@ -299,7 +306,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 					return err
 				}
 			}
-			id, err := cl.ProjectVersionAdd(ctx, *pVersionsAddProjectID, args[0], *pVersionsAddDescription, *pVersionsAddReleased, *pVersionsAddObsolete, date)
+			id, err := cl.ProjectVersionAdd(ctx, int(projectID), args[0], *pVersionsAddDescription, *pVersionsAddReleased, *pVersionsAddObsolete, date)
 			fmt.Println(id)
 			return err
 		},
@@ -311,12 +318,40 @@ func App(cl *mantis.Client) *ffcli.Command {
 	pVersionsUpdateReleased := fs.Bool("released", false, "released?")
 	pVersionsUpdateObsolete := fs.Bool("obsolete", false, "obsolete?")
 	pVersionsUpdateDate := fs.String("date", "", "date")
-	pVersionsUpdateCmd := &ffcli.Command{Name: "update", ShortUsage: "update project version", FlagSet: fs,
+	pVersionsUpdateCmd := &ffcli.Command{Name: "update",
+		ShortUsage: "update project version <versionID> [name]",
+		FlagSet:    fs,
 		Exec: func(ctx context.Context, args []string) error {
+			if len(args) == 0 {
+				return fmt.Errorf("versionID is required")
+			}
 			id, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
 			}
+
+			projects, err := cl.ProjectsGetUserAccessible(ctx)
+			if err != nil {
+				return err
+			}
+			var data mantis.ProjectVersionData
+		OuterLoop:
+			for _, p := range projects {
+				versions, err := cl.ProjectVersionsList(ctx, p.ID)
+				if err != nil {
+					return err
+				}
+				for _, v := range versions {
+					if v.ID == id {
+						data = v
+						break OuterLoop
+					}
+				}
+			}
+			if data.ID != id {
+				return fmt.Errorf("versionID %d not found", id)
+			}
+
 			var date *mantis.Time
 			if *pVersionsUpdateDate != "" {
 				date = new(mantis.Time)
@@ -327,17 +362,6 @@ func App(cl *mantis.Client) *ffcli.Command {
 			var name string
 			if len(args) > 1 {
 				name = args[1]
-			}
-			versions, err := cl.ProjectVersionsList(ctx, *pVersionsUpdateProjectID)
-			if err != nil {
-				return err
-			}
-			var data mantis.ProjectVersionData
-			for _, v := range versions {
-				if v.ID == id {
-					data = v
-					break
-				}
 			}
 			data.ProjectID, data.ID = *pVersionsUpdateProjectID, id
 			if name != "" {
@@ -356,13 +380,17 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	pVersionsDeleteCmd := &ffcli.Command{Name: "delete", ShortUsage: "delete project version",
+	pVersionsDeleteCmd := &ffcli.Command{Name: "delete",
+		ShortUsage: "delete project version <versionID>",
 		Exec: func(ctx context.Context, args []string) error {
-			projectID, err := strconv.Atoi(args[0])
+			if len(args) == 0 {
+				return fmt.Errorf("versionID is required")
+			}
+			versionID, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
 			}
-			return cl.ProjectVersionDelete(ctx, projectID)
+			return cl.ProjectVersionDelete(ctx, versionID)
 		},
 	}
 
