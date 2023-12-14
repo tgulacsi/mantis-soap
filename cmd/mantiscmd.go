@@ -267,12 +267,9 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
+	var projectID int
 	pVersionsListCmd := &ffcli.Command{Name: "list", ShortUsage: "list project versions <projectID>",
 		Exec: func(ctx context.Context, args []string) error {
-			projectID, err := strconv.Atoi(args[0])
-			if err != nil {
-				return err
-			}
 			versions, err := cl.ProjectVersionsList(ctx, projectID)
 			enc := json.NewEncoder(os.Stdout)
 			for _, v := range versions {
@@ -285,19 +282,14 @@ func App(cl *mantis.Client) *ffcli.Command {
 	}
 
 	fs := flag.NewFlagSet("project-version-add", flag.ContinueOnError)
-	// pVersionsAddProjectID := fs.Int("project", 0, "project id")
 	pVersionsAddDescription := fs.String("description", "", "version description")
 	pVersionsAddReleased := fs.Bool("released", false, "released?")
 	pVersionsAddObsolete := fs.Bool("obsolete", false, "obsolete?")
 	pVersionsAddDate := fs.String("date", "", "date")
-	pVersionsAddCmd := &ffcli.Command{Name: "add", ShortUsage: "add project version <projectID>", FlagSet: fs,
+	pVersionsAddCmd := &ffcli.Command{Name: "add", ShortUsage: "add project version", FlagSet: fs,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) == 0 {
-				return fmt.Errorf("projectID is required")
-			}
-			projectID, err := strconv.ParseInt(args[0], 10, 32)
-			if err != nil {
-				return fmt.Errorf("parse %q as projectID: %w", args[0], err)
+				return fmt.Errorf("version name is required")
 			}
 			var date *mantis.Time
 			if *pVersionsAddDate != "" {
@@ -306,14 +298,13 @@ func App(cl *mantis.Client) *ffcli.Command {
 					return err
 				}
 			}
-			id, err := cl.ProjectVersionAdd(ctx, int(projectID), args[0], *pVersionsAddDescription, *pVersionsAddReleased, *pVersionsAddObsolete, date)
+			id, err := cl.ProjectVersionAdd(ctx, projectID, args[0], *pVersionsAddDescription, *pVersionsAddReleased, *pVersionsAddObsolete, date)
 			fmt.Println(id)
 			return err
 		},
 	}
 
 	fs = flag.NewFlagSet("project-version-add", flag.ContinueOnError)
-	pVersionsUpdateProjectID := fs.Int("project", 0, "project id")
 	pVersionsUpdateDescription := fs.String("description", "", "version description")
 	pVersionsUpdateReleased := fs.Bool("released", false, "released?")
 	pVersionsUpdateObsolete := fs.Bool("obsolete", false, "obsolete?")
@@ -363,7 +354,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 			if len(args) > 1 {
 				name = args[1]
 			}
-			data.ProjectID, data.ID = *pVersionsUpdateProjectID, id
+			data.ProjectID, data.ID = projectID, id
 			if name != "" {
 				data.Name = name
 			}
@@ -394,7 +385,10 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
+	fs = flag.NewFlagSet("projects", flag.ContinueOnError)
+	fs.IntVar(&projectID, "project", 0, "project id")
 	projectVersionsCmd := &ffcli.Command{Name: "versions", ShortUsage: "do sth with versions",
+		FlagSet:     fs,
 		Subcommands: []*ffcli.Command{pVersionsListCmd, pVersionsAddCmd, pVersionsDeleteCmd, pVersionsUpdateCmd},
 	}
 
