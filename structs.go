@@ -334,8 +334,8 @@ type NoteData struct {
 }
 
 type CustomFieldData struct {
-	Field ObjectRef `xml:"field,omitempty"`
-	Value string    `xml:"value,omitempty"`
+	Field ObjectRef `xml:"field"`
+	Value string    `xml:"value"`
 }
 
 type Auth struct {
