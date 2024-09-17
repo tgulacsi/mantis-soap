@@ -257,7 +257,7 @@ type IssueData struct {
 
 type FilterSearchData struct {
 	ProjectID            []int               `xml:"project_id>integer,omitempty"`
-	Search               string              `xml:"search>string,omitempty"`
+	Search               string              `xml:"search,omitempty"`
 	Category             []string            `xml:"category>string,omitempty"`
 	SeverityID           []int               `xml:"severity_id>integer,omitempty"`
 	StatusID             []int               `xml:"status_id>integer,omitempty"`

@@ -45,7 +45,7 @@ func Main() error {
 	var cl mantis.Client
 
 	app := mantiscmd.App(&cl)
-	appVerbose := app.FlagSet.Bool("v", false, "verbose logging")
+	app.FlagSet.Var(&verbose, "v", "verbose logging")
 	URL := app.FlagSet.String("mantis", "", "Mantis URL")
 	username := app.FlagSet.String("user", os.Getenv("USER"), "Mantis user name")
 	passwordEnv := app.FlagSet.String("password-env", "MC_PASSWORD", "Environment variable's name for the password")
@@ -57,6 +57,7 @@ func Main() error {
 
 	ctx, cancel := globalctx.Wrap(context.Background())
 	defer cancel()
+	ctx = zlog.NewSContext(ctx, logger)
 
 	passw := os.Getenv(*passwordEnv)
 	var conf Config
@@ -89,7 +90,7 @@ func Main() error {
 		cancel()
 		return err
 	}
-	if *appVerbose {
+	if verbose > 0 {
 		cl.Logger = logger.WithGroup("mantis-soap")
 		mantis.SetLogger(cl.Logger)
 	}
