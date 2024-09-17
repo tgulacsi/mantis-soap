@@ -268,7 +268,7 @@ type FilterSearchData struct {
 	ResolutionID         []int               `xml:"resolution_id,omitempty"`
 	ProductVersion       []string            `xml:"product_version,omitempty"`
 	UserMonitorID        []int               `xml:"user_monitor_id,omitempty"`
-	HideStatusID         []int               `xml:"hide_status_id,omitempty"`
+	HideStatusID         IntArray            `xml:"hide_status_id,omitempty"`
 	Sort                 string              `xml:"sort,omitempty"`
 	SortDirection        string              `xml:"sort_direction,omitempty"`
 	Sticky               *bool               `xml:"sticky,omitempty"`
@@ -293,6 +293,10 @@ type FilterSearchData struct {
 	TagString            []string            `xml:"tag_string,omitempty"`
 	TagSelect            []int               `xml:"tag_select,omitempty"`
 	CustomFields         []FilterCustomField `xml:"custom_fields,omitempty"`
+}
+
+type IntArray struct {
+	Array []int `xml:"integer"`
 }
 
 type FilterCustomField struct {

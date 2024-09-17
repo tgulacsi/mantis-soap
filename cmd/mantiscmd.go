@@ -12,11 +12,13 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tgulacsi/mantis-soap"
+	"github.com/titanous/json5"
 	"github.com/zRedShift/mimemagic"
 )
 
@@ -58,6 +60,20 @@ func App(cl *mantis.Client) *ffcli.Command {
 				answer[strconv.Itoa(i)] = issue
 			}
 			return E(answer)
+		},
+	}
+	searchIssuesCmd := &ffcli.Command{Name: "search", ShortUsage: "search",
+		Exec: func(ctx context.Context, args []string) error {
+			var filter mantis.FilterSearchData
+			if err := json5.Unmarshal([]byte(strings.Join(args, " ")), &filter); err != nil {
+				return fmt.Errorf("unmarshal %q as %#v: %w", args, filter, err)
+			}
+			ids, err := cl.FilterSearchIssueIDs(ctx, filter, 0, 1000)
+			if err != nil {
+				return err
+			}
+			slices.Sort(ids)
+			return E(ids)
 		},
 	}
 
@@ -212,7 +228,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 
 	issueCmd := &ffcli.Command{Name: "issue", ShortUsage: "do sth on issues",
 		Subcommands: []*ffcli.Command{
-			existCmd, getIssuesCmd,
+			existCmd, getIssuesCmd, searchIssuesCmd,
 			getMonitorsCmd, addMonitorsCmd,
 			addAttachmentCmd, issueListAttachmentsCmd, issueDownloadAttachmentCmd,
 			&statusCmd,
