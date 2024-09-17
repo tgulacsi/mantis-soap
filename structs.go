@@ -1,4 +1,4 @@
-// Copyright 2016, 2020 Tamás Gulácsi
+// Copyright 2016, 2024 Tamás Gulácsi
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -256,28 +256,28 @@ type IssueData struct {
 }
 
 type FilterSearchData struct {
-	ProjectID            []int               `xml:"project_id,omitempty"`
-	Search               string              `xml:"search,omitempty"`
-	Category             []string            `xml:"category,omitempty"`
-	SeverityID           []int               `xml:"severity_id,omitempty"`
-	StatusID             []int               `xml:"status_id,omitempty"`
-	PriorityID           []int               `xml:"priority_id,omitempty"`
-	ReporterID           []int               `xml:"reporter_id,omitempty"`
-	HandlerID            []int               `xml:"handler_id,omitempty"`
-	NoteUserID           []int               `xml:"note_user_id,omitempty"`
-	ResolutionID         []int               `xml:"resolution_id,omitempty"`
-	ProductVersion       []string            `xml:"product_version,omitempty"`
-	UserMonitorID        []int               `xml:"user_monitor_id,omitempty"`
-	HideStatusID         IntArray            `xml:"hide_status_id,omitempty"`
+	ProjectID            []int               `xml:"project_id>integer,omitempty"`
+	Search               string              `xml:"search>string,omitempty"`
+	Category             []string            `xml:"category>string,omitempty"`
+	SeverityID           []int               `xml:"severity_id>integer,omitempty"`
+	StatusID             []int               `xml:"status_id>integer,omitempty"`
+	PriorityID           []int               `xml:"priority_id>integer,omitempty"`
+	ReporterID           []int               `xml:"reporter_id>integer,omitempty"`
+	HandlerID            []int               `xml:"handler_id>integer,omitempty"`
+	NoteUserID           []int               `xml:"note_user_id>integer,omitempty"`
+	ResolutionID         []int               `xml:"resolution_id>integer,omitempty"`
+	ProductVersion       []string            `xml:"product_version>string,omitempty"`
+	UserMonitorID        []int               `xml:"user_monitor_id>integer,omitempty"`
+	HideStatusID         []int               `xml:"hide_status_id>integer,omitempty"`
 	Sort                 string              `xml:"sort,omitempty"`
-	SortDirection        string              `xml:"sort_direction,omitempty"`
+	SortDirection        *string             `xml:"sort_direction,omitempty"`
 	Sticky               *bool               `xml:"sticky,omitempty"`
-	ViewStateID          []int               `xml:"view_state_id,omitempty"`
-	FixedInVersion       []string            `xml:"fixed_in_version,omitempty"`
-	TargetVersion        []string            `xml:"target_version,omitempty"`
-	Platform             []string            `xml:"platform,omitempty"`
-	OS                   []string            `xml:"os,omitempty"`
-	OSBuild              []string            `xml:"os_build,omitempty"`
+	ViewStateID          []int               `xml:"view_state_id>integer,omitempty"`
+	FixedInVersion       []string            `xml:"fixed_in_version>string,omitempty"`
+	TargetVersion        []string            `xml:"target_version>string,omitempty"`
+	Platform             []string            `xml:"platform>string,omitempty"`
+	OS                   []string            `xml:"os>string,omitempty"`
+	OSBuild              []string            `xml:"os_build>string,omitempty"`
 	StartDay             *int                `xml:"start_day,omitempty"`
 	StartMonth           *int                `xml:"start_month,omitempty"`
 	StartYear            *int                `xml:"start_year,omitempty"`
@@ -292,16 +292,12 @@ type FilterSearchData struct {
 	LastUpdateEndYear    *int                `xml:"last_update_end_year,omitempty"`
 	TagString            []string            `xml:"tag_string,omitempty"`
 	TagSelect            []int               `xml:"tag_select,omitempty"`
-	CustomFields         []FilterCustomField `xml:"custom_fields,omitempty"`
-}
-
-type IntArray struct {
-	Array []int `xml:"integer"`
+	CustomFields         []FilterCustomField `xml:"custom_fields>FilterCustomField,omitempty"`
 }
 
 type FilterCustomField struct {
-	Field ObjectRef `xml:"field"`
-	Value []string  `xml:"value"`
+	Field ObjectRef `xml:"field,omitempty"`
+	Value []string  `xml:"value,omitempty"`
 }
 
 type ObjectRef struct {
