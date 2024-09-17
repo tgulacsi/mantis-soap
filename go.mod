@@ -3,7 +3,7 @@ module github.com/tgulacsi/mantis-soap
 require (
 	github.com/UNO-SOFT/zlog v0.8.2
 	github.com/peterbourgon/ff/v3 v3.4.0
-	github.com/tgulacsi/go v0.27.6
+	github.com/tgulacsi/go v0.27.7-0.20240917191515-7d0799c9cdb8
 	github.com/titanous/json5 v1.0.0
 	github.com/zRedShift/mimemagic v1.2.0
 	golang.org/x/term v0.23.0

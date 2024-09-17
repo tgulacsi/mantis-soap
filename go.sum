@@ -28,8 +28,8 @@ github.com/smartystreets/assertions v1.13.0 h1:Dx1kYM01xsSqKPno3aqLnrwac2LetPvN2
 github.com/smartystreets/assertions v1.13.0/go.mod h1:wDmR7qL282YbGsPy6H/yAsesrxfxaaSlJazyFLYVFx8=
 github.com/smartystreets/goconvey v1.6.4 h1:fv0U8FUIMPNf1L9lnHLvLhgicrIVChEkdzIKYqbNC9s=
 github.com/smartystreets/goconvey v1.6.4/go.mod h1:syvi0/a8iFYH4r/RixwvyeAJjdLS9QV7WQ/tjFTllLA=
-github.com/tgulacsi/go v0.27.6 h1:EwErbO6oGXKt95Yx0zobv41euj0Q7eXjHi/BK4P0PWo=
-github.com/tgulacsi/go v0.27.6/go.mod h1:b2VZsxV9jIib+A1ldmuGIRUNU39vGU70m92dHL19nVE=
+github.com/tgulacsi/go v0.27.7-0.20240917191515-7d0799c9cdb8 h1:ynzRimvUA4jYl14RLUBy2DQ5TrKQzJIhq1Vt+jr5VdU=
+github.com/tgulacsi/go v0.27.7-0.20240917191515-7d0799c9cdb8/go.mod h1:b2VZsxV9jIib+A1ldmuGIRUNU39vGU70m92dHL19nVE=
 github.com/titanous/json5 v1.0.0 h1:hJf8Su1d9NuI/ffpxgxQfxh/UiBFZX7bMPid0rIL/7s=
 github.com/titanous/json5 v1.0.0/go.mod h1:7JH1M8/LHKc6cyP5o5g3CSaRj+mBrIimTxzpvmckH8c=
 github.com/zRedShift/mimemagic v1.2.0 h1:tfX2W91dg2wG8YyZAPmameP6q1YuuIw3TveWbc7NnAE=
