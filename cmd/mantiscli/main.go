@@ -1,4 +1,4 @@
-// Copyright 2017, 2022 Tamás Gulácsi. All rights reserved.
+// Copyright 2017, 2024 Tamás Gulácsi. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -44,12 +44,12 @@ func main() {
 func Main() error {
 	var cl mantis.Client
 
-	app := mantiscmd.App(&cl)
-	app.FlagSet.Var(&verbose, "v", "verbose logging")
-	URL := app.FlagSet.String("mantis", "", "Mantis URL")
-	username := app.FlagSet.String("user", os.Getenv("USER"), "Mantis user name")
-	passwordEnv := app.FlagSet.String("password-env", "MC_PASSWORD", "Environment variable's name for the password")
-	configFile := app.FlagSet.String("config", os.ExpandEnv("/home/$USER/.config/mantiscli.json"), "config file with the stored password")
+	app, FS := mantiscmd.App(&cl)
+	FS.Value('v', "verbose", &verbose, "verbose logging")
+	URL := FS.StringLong("mantis", "", "Mantis URL")
+	username := FS.String('u', "user", os.Getenv("USER"), "Mantis user name")
+	passwordEnv := FS.StringLong("password-env", "MC_PASSWORD", "Environment variable's name for the password")
+	configFile := FS.String('c', "config", os.ExpandEnv("/home/$USER/.config/mantiscli.json"), "config file with the stored password")
 
 	if err := app.Parse(os.Args[1:]); err != nil {
 		return err

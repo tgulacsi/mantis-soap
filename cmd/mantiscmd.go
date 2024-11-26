@@ -1,4 +1,4 @@
-// Copyright 2017, 2022 Tamás Gulácsi. All rights reserved.
+// Copyright 2017, 2024 Tamás Gulácsi. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -7,7 +7,6 @@ package mantiscmd
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log/slog"
 	"os"
@@ -16,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/peterbourgon/ff/v4"
 	"github.com/tgulacsi/mantis-soap"
 	"github.com/titanous/json5"
 	"github.com/zRedShift/mimemagic"
@@ -26,9 +25,9 @@ var logger = slog.Default()
 
 func SetLogger(lgr *slog.Logger) { logger = lgr }
 
-// App returns an *ffcli.Command usable as app.
-func App(cl *mantis.Client) *ffcli.Command {
-	existCmd := &ffcli.Command{Name: "exist", ShortUsage: "check the existence of issues",
+// App returns an *ff.Command usable as app.
+func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
+	existCmd := &ff.Command{Name: "exist", Usage: "check the existence of issues",
 		Exec: func(ctx context.Context, args []string) error {
 			issueIDs, err := toInts(args)
 			if err != nil {
@@ -45,7 +44,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 			return E(answer)
 		},
 	}
-	getIssuesCmd := &ffcli.Command{Name: "get", ShortUsage: "get",
+	getIssuesCmd := &ff.Command{Name: "get", Usage: "get",
 		Exec: func(ctx context.Context, args []string) error {
 			issueIDs, err := toInts(args)
 			if err != nil {
@@ -62,7 +61,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 			return E(answer)
 		},
 	}
-	searchIssuesCmd := &ffcli.Command{Name: "search", ShortUsage: "search",
+	searchIssuesCmd := &ff.Command{Name: "search", Usage: "search",
 		Exec: func(ctx context.Context, args []string) error {
 			var filter mantis.FilterSearchData
 			if err := json5.Unmarshal([]byte(strings.Join(args, " ")), &filter); err != nil {
@@ -77,7 +76,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	getMonitorsCmd := &ffcli.Command{Name: "monitors", ShortUsage: "get monitors",
+	getMonitorsCmd := &ff.Command{Name: "monitors", Usage: "get monitors",
 		Exec: func(ctx context.Context, args []string) error {
 			issueIDs, err := toInts(args)
 			if err != nil {
@@ -95,7 +94,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	addAttachmentCmd := &ffcli.Command{Name: "attach", ShortUsage: "attach a file to the issue",
+	addAttachmentCmd := &ff.Command{Name: "attach", Usage: "attach a file to the issue",
 		Exec: func(ctx context.Context, args []string) error {
 			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
@@ -133,7 +132,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	issueListAttachmentsCmd := &ffcli.Command{Name: "attachments", ShortUsage: "list attachments",
+	issueListAttachmentsCmd := &ff.Command{Name: "attachments", Usage: "list attachments",
 		Exec: func(ctx context.Context, args []string) error {
 			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
@@ -146,7 +145,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 			return E(issue.Attachments)
 		},
 	}
-	issueDownloadAttachmentCmd := &ffcli.Command{Name: "download", ShortUsage: "download attachments of the issue",
+	issueDownloadAttachmentCmd := &ff.Command{Name: "download", Usage: "download attachments of the issue",
 		Exec: func(ctx context.Context, args []string) error {
 			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
@@ -165,24 +164,24 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	attachmentAddCmd := ffcli.Command{Name: "add", ShortHelp: "add attachment",
+	attachmentAddCmd := ff.Command{Name: "add", ShortHelp: "add attachment",
 		Exec: addAttachmentCmd.Exec,
 	}
 
-	attachmentListCmd := ffcli.Command{Name: "list", ShortHelp: "list attachments",
+	attachmentListCmd := ff.Command{Name: "list", ShortHelp: "list attachments",
 		Exec: issueListAttachmentsCmd.Exec,
 	}
 
-	attachmentDownloadCmd := ffcli.Command{Name: "download", ShortHelp: "download attachments",
+	attachmentDownloadCmd := ff.Command{Name: "download", ShortHelp: "download attachments",
 		Exec: issueDownloadAttachmentCmd.Exec,
 	}
 
-	attachmentCmd := ffcli.Command{Name: "attachment", ShortHelp: "do sth with attachments",
+	attachmentCmd := ff.Command{Name: "attachment", ShortHelp: "do sth with attachments",
 		Exec:        attachmentListCmd.Exec,
-		Subcommands: []*ffcli.Command{&attachmentAddCmd, &attachmentListCmd, &attachmentDownloadCmd},
+		Subcommands: []*ff.Command{&attachmentAddCmd, &attachmentListCmd, &attachmentDownloadCmd},
 	}
 
-	addMonitorsCmd := &ffcli.Command{Name: "add", ShortUsage: "add monitor",
+	addMonitorsCmd := &ff.Command{Name: "add", Usage: "add monitor",
 		Exec: func(ctx context.Context, args []string) error {
 			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
@@ -191,7 +190,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 			return addMonitors(ctx, cl, issueID, args[1:])
 		},
 	}
-	statusCmd := ffcli.Command{Name: "status", ShortHelp: "set issue's status",
+	statusCmd := ff.Command{Name: "status", ShortHelp: "set issue's status",
 		Exec: func(ctx context.Context, args []string) error {
 			status, err := strconv.Atoi(args[0])
 			if err != nil {
@@ -226,8 +225,8 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	issueCmd := &ffcli.Command{Name: "issue", ShortUsage: "do sth on issues",
-		Subcommands: []*ffcli.Command{
+	issueCmd := &ff.Command{Name: "issue", Usage: "do sth on issues",
+		Subcommands: []*ff.Command{
 			existCmd, getIssuesCmd, searchIssuesCmd,
 			getMonitorsCmd, addMonitorsCmd,
 			addAttachmentCmd, issueListAttachmentsCmd, issueDownloadAttachmentCmd,
@@ -235,8 +234,8 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	addNoteCmd := &ffcli.Command{
-		Name: "add", ShortUsage: "add a note to an issue",
+	addNoteCmd := &ff.Command{
+		Name: "add", Usage: "add a note to an issue",
 		Exec: func(ctx context.Context, args []string) error {
 			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
@@ -254,11 +253,11 @@ func App(cl *mantis.Client) *ffcli.Command {
 			return nil
 		},
 	}
-	noteCmd := &ffcli.Command{Name: "note", ShortUsage: "do sth with notes",
-		Subcommands: []*ffcli.Command{addNoteCmd},
+	noteCmd := &ff.Command{Name: "note", Usage: "do sth with notes",
+		Subcommands: []*ff.Command{addNoteCmd},
 	}
 
-	listProjectsCmd := &ffcli.Command{Name: "list", ShortUsage: "list projects",
+	listProjectsCmd := &ff.Command{Name: "list", Usage: "list projects",
 		Exec: func(ctx context.Context, args []string) error {
 			projects, err := cl.ProjectsGetUserAccessible(ctx)
 			if err != nil {
@@ -284,7 +283,7 @@ func App(cl *mantis.Client) *ffcli.Command {
 	}
 
 	var projectID int
-	pVersionsListCmd := &ffcli.Command{Name: "list", ShortUsage: "list project versions <projectID>",
+	pVersionsListCmd := &ff.Command{Name: "list", Usage: "list project versions <projectID>",
 		Exec: func(ctx context.Context, args []string) error {
 			versions, err := cl.ProjectVersionsList(ctx, projectID)
 			enc := json.NewEncoder(os.Stdout)
@@ -297,12 +296,12 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	fs := flag.NewFlagSet("project-version-add", flag.ContinueOnError)
-	pVersionsAddDescription := fs.String("description", "", "version description")
-	pVersionsAddReleased := fs.Bool("released", false, "released?")
-	pVersionsAddObsolete := fs.Bool("obsolete", false, "obsolete?")
-	pVersionsAddDate := fs.String("date", "", "date")
-	pVersionsAddCmd := &ffcli.Command{Name: "add", ShortUsage: "add project version", FlagSet: fs,
+	FS := ff.NewFlagSet("project-version-add")
+	pVersionsAddDescription := FS.StringLong("description", "", "version description")
+	pVersionsAddReleased := FS.BoolLongDefault("released", false, "released?")
+	pVersionsAddObsolete := FS.BoolLongDefault("obsolete", false, "obsolete?")
+	pVersionsAddDate := FS.StringLong("date", "", "date")
+	pVersionsAddCmd := &ff.Command{Name: "add", Usage: "add project version", Flags: FS,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) == 0 {
 				return fmt.Errorf("version name is required")
@@ -320,14 +319,14 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	fs = flag.NewFlagSet("project-version-add", flag.ContinueOnError)
-	pVersionsUpdateDescription := fs.String("description", "", "version description")
-	pVersionsUpdateReleased := fs.Bool("released", false, "released?")
-	pVersionsUpdateObsolete := fs.Bool("obsolete", false, "obsolete?")
-	pVersionsUpdateDate := fs.String("date", "", "date")
-	pVersionsUpdateCmd := &ffcli.Command{Name: "update",
-		ShortUsage: "update project version <versionID> [name]",
-		FlagSet:    fs,
+	FS = ff.NewFlagSet("project-version-add")
+	pVersionsUpdateDescription := FS.StringLong("description", "", "version description")
+	pVersionsUpdateReleased := FS.BoolLongDefault("released", false, "released?")
+	pVersionsUpdateObsolete := FS.BoolLongDefault("obsolete", false, "obsolete?")
+	pVersionsUpdateDate := FS.StringLong("date", "", "date")
+	pVersionsUpdateCmd := &ff.Command{Name: "update",
+		Usage: "update project version <versionID> [name]",
+		Flags: FS,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) == 0 {
 				return fmt.Errorf("versionID is required")
@@ -387,8 +386,8 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	pVersionsDeleteCmd := &ffcli.Command{Name: "delete",
-		ShortUsage: "delete project version <versionID>",
+	pVersionsDeleteCmd := &ff.Command{Name: "delete",
+		Usage: "delete project version <versionID>",
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) == 0 {
 				return fmt.Errorf("versionID is required")
@@ -401,20 +400,21 @@ func App(cl *mantis.Client) *ffcli.Command {
 		},
 	}
 
-	fs = flag.NewFlagSet("projects", flag.ContinueOnError)
-	fs.IntVar(&projectID, "project", 0, "project id")
-	projectVersionsCmd := &ffcli.Command{Name: "versions", ShortUsage: "do sth with versions",
-		FlagSet:     fs,
-		Subcommands: []*ffcli.Command{pVersionsListCmd, pVersionsAddCmd, pVersionsDeleteCmd, pVersionsUpdateCmd},
+	FS = ff.NewFlagSet("projects")
+	FS.IntVar(&projectID, 0, "project", 0, "project id")
+	projectVersionsCmd := &ff.Command{Name: "versions", Usage: "do sth with versions",
+		Flags:       FS,
+		Subcommands: []*ff.Command{pVersionsListCmd, pVersionsAddCmd, pVersionsDeleteCmd, pVersionsUpdateCmd},
 	}
 
-	projectsCmd := &ffcli.Command{Name: "project", ShortUsage: "do sth with projects",
-		Subcommands: []*ffcli.Command{listProjectsCmd, projectVersionsCmd},
+	projectsCmd := &ff.Command{Name: "project", Usage: "do sth with projects",
+		Subcommands: []*ff.Command{listProjectsCmd, projectVersionsCmd},
 	}
 
-	fs = flag.NewFlagSet("project-list-users", flag.ContinueOnError)
-	usersAccessLevel := fs.Int("access-level", 10, "access level threshold")
-	listUsersCmd := &ffcli.Command{Name: "list", ShortUsage: "list users", FlagSet: fs,
+	FS = ff.NewFlagSet("project-list-users")
+	usersAccessLevel := FS.IntLong("access-level", 10, "access level threshold")
+	listUsersCmd := &ff.Command{Name: "list", Flags: FS,
+		Usage: "list users",
 		Exec: func(ctx context.Context, args []string) error {
 			projectID := 1
 			if len(args) != 0 {
@@ -430,16 +430,17 @@ func App(cl *mantis.Client) *ffcli.Command {
 			return E(users)
 		},
 	}
-	usersCmd := &ffcli.Command{Name: "user", ShortUsage: "do sth with users",
-		Subcommands: []*ffcli.Command{listUsersCmd},
+	usersCmd := &ff.Command{Name: "user", Usage: "do sth with users",
+		Subcommands: []*ff.Command{listUsersCmd},
 	}
 
-	fs = flag.NewFlagSet("mantiscli", flag.ContinueOnError)
-	return &ffcli.Command{Name: "mantiscli", ShortUsage: "Mantis Command-Line Interface", FlagSet: fs,
-		Subcommands: []*ffcli.Command{
+	FS = ff.NewFlagSet("mantiscli")
+	return &ff.Command{Name: "mantiscli", Flags: FS,
+		Usage: "Mantis Command-Line Interface",
+		Subcommands: []*ff.Command{
 			&attachmentCmd,
 			issueCmd, noteCmd, projectsCmd, usersCmd},
-	}
+	}, FS
 }
 
 // E encodes the answer as JSON.
