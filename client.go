@@ -1,4 +1,4 @@
-// Copyright 2016, 2024 Tamás Gulácsi
+// Copyright 2016, 2025 Tamás Gulácsi
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -71,18 +71,16 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	if err := xml.NewEncoder(buf).Encode(request); err != nil {
 		return fmt.Errorf("marshal %#v: %w", request, err)
 	}
-	resp := bufPool.Get()
-	defer bufPool.Put(resp)
 	if zlog.SFromContext(ctx) == nil {
 		ctx = zlog.NewSContext(ctx, c.Logger)
 	}
-	d, err := c.Caller.Call(ctx, resp, method, bytes.NewReader(buf.Bytes()))
+	d, err := c.Caller.Call(ctx, method, bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return fmt.Errorf("call %s: %w", buf.String(), err)
 	}
 	buf.Reset()
 	if err := d.Decode(response); err != nil {
-		return fmt.Errorf("response: %s: %w", resp.String(), err)
+		return fmt.Errorf("decode response: %w", err)
 	}
 	return nil
 }
