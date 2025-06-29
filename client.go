@@ -7,18 +7,21 @@ package mantis
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"sync"
 	"unsafe"
 
 	"github.com/UNO-SOFT/zlog/v2"
 	"github.com/tgulacsi/go/soaphlp"
+	"golang.org/x/net/publicsuffix"
 )
 
 var logger = slog.Default()
@@ -34,6 +37,12 @@ func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, p
 	if c == nil {
 		c = http.DefaultClient
 	}
+	if c.Jar == nil {
+		var err error
+		if c.Jar, err = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List}); err != nil {
+			return Client{}, err
+		}
+	}
 	cl := Client{
 		Caller: soaphlp.NewClient(
 			baseURL+"/api/soap/mantisconnect.php",
@@ -46,12 +55,16 @@ func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, p
 		},
 		httpClient: c, restURL: baseURL + "/api/rest/index.php",
 	}
-	resp, err := cl.Login(ctx)
-	if err != nil {
-		return cl, err
+	var err error
+	if cl.auth.IsAPIToken() {
+		cl.User, err = cl.Me(ctx)
+	} else {
+		var resp LoginResponse
+		if resp, err = cl.Login(ctx); err == nil {
+			cl.User = resp.Return.Account
+		}
 	}
-	cl.User = resp.Return.Account
-	return cl, nil
+	return cl, err
 }
 
 func New(ctx context.Context, baseURL, username, password string) (Client, error) {
@@ -269,42 +282,61 @@ func (c Client) CreateAPIToken(ctx context.Context, name string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	req, err := http.NewRequestWithContext(ctx, "POST",
-		c.restURL+"/me/token/"+url.PathEscape(name),
-		bytes.NewReader(b))
-	if err != nil {
-		return "", err
-	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("%s", resp.Status)
-	}
 	var result struct {
 		User  AccountData `json:"user"`
 		Name  string      `json:"name"`
 		Token string      `json:"token"`
 		ID    int         `json:"id"`
 	}
-	err = json.NewDecoder(resp.Body).Decode(&result)
+	err = c.restCall(ctx, &result, "POST", "/users/me/token/"+url.PathEscape(name),
+		bytes.NewReader(b))
 	return result.Token, err
 }
 func (c Client) DeleteAPIToken(ctx context.Context, name string) error {
-	req, err := http.NewRequestWithContext(ctx, "DELETE",
-		c.restURL+"/me/token/"+url.PathEscape(name), nil)
-	if err != nil {
-		return err
-	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("%s", resp.Status)
+	return c.restCall(ctx, nil, "DELETE", "/users/me/token/"+url.PathEscape(name), nil)
+}
+func (c Client) Me(ctx context.Context) (user AccountData, err error) {
+	err = c.restCall(ctx, &user, "GET", "/users/me", nil)
+	return user, err
+}
+
+func (c Client) restCall(ctx context.Context, response any, method, path string, body io.Reader) error {
+	u := c.restURL + path
+	if err := func() error {
+		URL, err := url.Parse(u)
+		if err != nil {
+			return err
+		}
+		if !c.auth.IsAPIToken() {
+			if URL.User == nil {
+				URL.User = url.UserPassword(c.auth.Username, c.auth.Password)
+			}
+		}
+		req, err := http.NewRequestWithContext(ctx, method, URL.String(), body)
+		if err != nil {
+			return err
+		}
+		if c.auth.IsAPIToken() {
+			req.Header.Add("Authorization", c.auth.Password)
+		} else {
+			req.Header.Add("Authorization", "Basic "+base64.URLEncoding.EncodeToString([]byte(c.auth.Username+":"+c.auth.Password)))
+		}
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode >= 400 {
+			return fmt.Errorf("%s [%v]", resp.Status, req.Header)
+		}
+		if response == nil {
+			return nil
+		}
+		return json.NewDecoder(resp.Body).Decode(response)
+	}(); err != nil {
+		return fmt.Errorf("%s: %w", u, err)
 	}
 	return nil
+
 }
 
 var bufPool = &bufferPool{

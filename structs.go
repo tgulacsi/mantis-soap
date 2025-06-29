@@ -345,6 +345,8 @@ type Auth struct {
 	Password string `xml:"password"`
 }
 
+func (a Auth) IsAPIToken() bool { return len(a.Password) >= 32 && len(a.Password)%4 == 0 }
+
 type UserData struct { //betteralign:ignore
 	Account     AccountData `xml:"account_data,omitempty"`
 	AccessLevel int         `xml:"access_level,omitempty"`
