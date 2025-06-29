@@ -1,4 +1,4 @@
-// Copyright 2017, 2024 Tamás Gulácsi. All rights reserved.
+// Copyright 2017, 2025 Tamás Gulácsi. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -414,7 +414,7 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 	FS = ff.NewFlagSet("project-list-users")
 	usersAccessLevel := FS.IntLong("access-level", 10, "access level threshold")
 	listUsersCmd := &ff.Command{Name: "list", Flags: FS,
-		Usage: "list users",
+		ShortHelp: "user list [projectID]",
 		Exec: func(ctx context.Context, args []string) error {
 			projectID := 1
 			if len(args) != 0 {
@@ -430,8 +430,29 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			return E(users)
 		},
 	}
+	deleteAPITokenCmd := ff.Command{Name: "delete",
+		Usage:     "delete <tokenName>",
+		ShortHelp: "delete token",
+		Exec: func(ctx context.Context, args []string) error {
+			return cl.DeleteAPIToken(ctx, args[0])
+		},
+	}
+	createAPITokenCmd := ff.Command{Name: "token",
+		Usage:       "token [tokenName]",
+		ShortHelp:   "create a new API token with the given name",
+		Subcommands: []*ff.Command{&deleteAPITokenCmd},
+		Exec: func(ctx context.Context, args []string) error {
+			var name string
+			if len(args) != 0 {
+				name = args[0]
+			}
+			token, err := cl.CreateAPIToken(ctx, name)
+			fmt.Println(token)
+			return err
+		},
+	}
 	usersCmd := &ff.Command{Name: "user", Usage: "do sth with users",
-		Subcommands: []*ff.Command{listUsersCmd},
+		Subcommands: []*ff.Command{listUsersCmd, &createAPITokenCmd},
 	}
 
 	FS = ff.NewFlagSet("mantiscli")

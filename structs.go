@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+//betteralign:ignore
+
 package mantis
 
 import (
@@ -70,19 +72,19 @@ type IssueAddResponse struct {
 	Return  int      `xml:"return"`
 }
 
-type IssueUpdateRequest struct {
+type IssueUpdateRequest struct { //betteralign:ignore
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_update"`
 	Auth
 	IssueID IssueID   `xml:"issueId"`
 	Issue   IssueData `xml:"issue"`
 }
 
-type IssueUpdateResponse struct {
+type IssueUpdateResponse struct { //betteralign:ignore
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_updateResponse"`
 	Return  bool     `xml:"return"`
 }
 
-type IssueAttachmentAddRequest struct {
+type IssueAttachmentAddRequest struct { //betteralign:ignore
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_attachment_add"`
 	Auth
 	IssueID  IssueID `xml:"issue_id"`
@@ -96,7 +98,7 @@ type IssueAttachmentAddResponse struct {
 	Return  int      `xml:"return"`
 }
 
-type IssueNoteAddRequest struct {
+type IssueNoteAddRequest struct { //betteralign:ignore
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_issue_note_add"`
 	Auth
 	IssueID IssueID       `xml:"issue_id"`
@@ -145,7 +147,7 @@ type ProjectVersionAddResponse struct {
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_addResponse"`
 	Return  int      `xml:"return"`
 }
-type ProjectVersionUpdateRequest struct {
+type ProjectVersionUpdateRequest struct { //betteralign:ignore
 	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_project_version_update"`
 	Auth
 	VersionID int                `xml:"version_id"`
@@ -300,12 +302,12 @@ type FilterCustomField struct {
 	Value []string  `xml:"value,omitempty"`
 }
 
-type ObjectRef struct {
+type ObjectRef struct { //betteralign:ignore
 	ID   int    `xml:"id,omitempty"`
 	Name string `xml:"name,omitempty"`
 }
 
-type AttachmentData struct {
+type AttachmentData struct { //betteralign:ignore
 	ID            int    `xml:"id,omitempty"`
 	FileName      string `xml:"filename,omitempty"`
 	Size          int    `xml:"size,omitempty"`
@@ -315,13 +317,13 @@ type AttachmentData struct {
 	UserID        int    `xml:"user_id,omitempty"`
 }
 
-type RelationshipData struct {
+type RelationshipData struct { //betteralign:ignore
 	ID       int       `xml:"id,omitempty"`
 	Type     ObjectRef `xml:"type,omitempty"`
 	TargetID int       `xml:"target_id,omitempty"`
 }
 
-type NoteData struct {
+type NoteData struct { //betteralign:ignore
 	ID            int         `xml:"id,omitempty"`
 	Reporter      AccountData `xml:"reporter,omitempty"`
 	Text          string      `xml:"text"`
@@ -343,21 +345,21 @@ type Auth struct {
 	Password string `xml:"password"`
 }
 
-type UserData struct {
+type UserData struct { //betteralign:ignore
 	Account     AccountData `xml:"account_data,omitempty"`
 	AccessLevel int         `xml:"access_level,omitempty"`
 	Timezone    string      `xml:"timezone,omitempty"`
 }
 
-type AccountData struct {
+type AccountData struct { //betteralign:ignore
 	//XMLName  xml.Name `xml:"account_data,omitempty"`
-	ID       int    `xml:"id,omitempty"`
-	Name     string `xml:"name,omitempty"`
-	RealName string `xml:"real_name,omitempty"`
-	Email    string `xml:"email,omitempty"`
+	ID       int    `xml:"id,omitempty" json:"id"`
+	Name     string `xml:"name,omitempty" json:"name"`
+	RealName string `xml:"real_name,omitempty" json:"real_name"`
+	Email    string `xml:"email,omitempty" json:"email"`
 }
 
-type ProjectData struct {
+type ProjectData struct { //betteralign:ignore
 	ID            int           `xml:"id,omitempty"`
 	Name          string        `xml:"name,omitempty"`
 	Status        *ObjectRef    `xml:"status,omitempty"`
@@ -370,7 +372,7 @@ type ProjectData struct {
 	InheritGlobal bool          `xml:"inherit_global,omitempty"`
 }
 
-type ProjectVersionData struct {
+type ProjectVersionData struct { //betteralign:ignore
 	ID          int    `xml:"id"`
 	Name        string `xml:"name"`
 	ProjectID   int    `xml:"project_id"`

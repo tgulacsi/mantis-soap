@@ -1,4 +1,4 @@
-// Copyright 2017, 2024 Tamás Gulácsi. All rights reserved.
+// Copyright 2017, 2025 Tamás Gulácsi. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -16,6 +16,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,6 +24,8 @@ import (
 	"golang.org/x/term"
 
 	"github.com/UNO-SOFT/zlog/v2"
+	"github.com/peterbourgon/ff/v4"
+	"github.com/peterbourgon/ff/v4/ffhelp"
 	"github.com/tgulacsi/go/globalctx"
 	tterm "github.com/tgulacsi/go/term"
 	"github.com/tgulacsi/mantis-soap"
@@ -52,6 +55,10 @@ func Main() error {
 	configFile := FS.String('c', "config", os.ExpandEnv("/home/$USER/.config/mantiscli.json"), "config file with the stored password")
 
 	if err := app.Parse(os.Args[1:]); err != nil {
+		ffhelp.Command(app).WriteTo(os.Stderr)
+		if errors.Is(err, ff.ErrHelp) {
+			return nil
+		}
 		return err
 	}
 

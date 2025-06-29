@@ -7,11 +7,13 @@ package mantis
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sync"
 	"unsafe"
 
@@ -29,13 +31,20 @@ func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, p
 		return Client{}, ctx.Err()
 	default:
 	}
-	baseURL += "/api/soap/mantisconnect.php"
+	if c == nil {
+		c = http.DefaultClient
+	}
 	cl := Client{
-		Caller: soaphlp.NewClient(baseURL, "http://www.mantisbt.org/bugs/api/soap/mantisconnect.php/", c),
+		Caller: soaphlp.NewClient(
+			baseURL+"/api/soap/mantisconnect.php",
+			"http://www.mantisbt.org/bugs/api/soap/mantisconnect.php/",
+			c,
+		),
 		auth: Auth{
 			Username: username,
 			Password: password,
 		},
+		httpClient: c, restURL: baseURL + "/api/rest/index.php",
 	}
 	resp, err := cl.Login(ctx)
 	if err != nil {
@@ -51,9 +60,11 @@ func New(ctx context.Context, baseURL, username, password string) (Client, error
 
 type Client struct {
 	soaphlp.Caller
-	auth Auth
-	User AccountData
+	httpClient *http.Client
 	*slog.Logger
+	User    AccountData
+	auth    Auth
+	restURL string
 }
 
 func (c Client) Call(ctx context.Context, method string, request, response interface{}) error {
@@ -249,6 +260,51 @@ func (c Client) Login(ctx context.Context) (LoginResponse, error) {
 func (c Client) GetCategoriesForProject(ctx context.Context, projectID int) (ProjectCategoriesResp, error) {
 	var resp ProjectCategoriesResp
 	return resp, c.Call(ctx, "mc_project_get_categories", ProjectCategoriesReq{Auth: c.auth, ProjectID: projectID}, &resp)
+}
+
+func (c Client) CreateAPIToken(ctx context.Context, name string) (string, error) {
+	b, err := json.Marshal(struct {
+		Name string `json:"name"`
+	}{Name: name})
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST",
+		c.restURL+"/me/token/"+url.PathEscape(name),
+		bytes.NewReader(b))
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("%s", resp.Status)
+	}
+	var result struct {
+		User  AccountData `json:"user"`
+		Name  string      `json:"name"`
+		Token string      `json:"token"`
+		ID    int         `json:"id"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	return result.Token, err
+}
+func (c Client) DeleteAPIToken(ctx context.Context, name string) error {
+	req, err := http.NewRequestWithContext(ctx, "DELETE",
+		c.restURL+"/me/token/"+url.PathEscape(name), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("%s", resp.Status)
+	}
+	return nil
 }
 
 var bufPool = &bufferPool{
