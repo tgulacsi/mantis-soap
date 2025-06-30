@@ -364,7 +364,9 @@ type bufferPool struct {
 }
 
 func (p *bufferPool) Get() *bytes.Buffer {
-	return p.Pool.Get().(*bytes.Buffer)
+	buf := p.Pool.Get().(*bytes.Buffer)
+	buf.Reset()
+	return buf
 }
 func (p *bufferPool) Put(b *bytes.Buffer) {
 	b.Reset()
