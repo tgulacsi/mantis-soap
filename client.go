@@ -37,6 +37,10 @@ func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, p
 	if c == nil {
 		c = http.DefaultClient
 	}
+	if c.Transport == nil {
+		c.Transport = http.DefaultTransport
+	}
+	c.Transport = soaphlp.NewTranspport(c.Transport)
 	if c.Jar == nil {
 		var err error
 		if c.Jar, err = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List}); err != nil {
@@ -98,7 +102,9 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	if zlog.SFromContext(ctx) == nil {
 		ctx = zlog.NewSContext(ctx, c.Logger)
 	}
-	d, err := c.Caller.Call(ctx, method, bytes.NewReader(buf.Bytes()))
+	answ := bufPool.Get()
+	defer bufPool.Put(answ)
+	d, err := c.Caller.Call(ctx, answ, method, bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return fmt.Errorf("call %s: %w", buf.String(), err)
 	}
@@ -276,22 +282,32 @@ func (c Client) GetCategoriesForProject(ctx context.Context, projectID int) (Pro
 }
 
 func (c Client) CreateAPIToken(ctx context.Context, name string) (string, error) {
-	b, err := json.Marshal(struct {
-		Name string `json:"name"`
-	}{Name: name})
-	if err != nil {
-		return "", err
+	if c.auth.IsAPIToken() { // REST
+		b, err := json.Marshal(struct {
+			Name string `json:"name"`
+		}{Name: name})
+		if err != nil {
+			return "", err
+		}
+		var result struct {
+			User  AccountData `json:"user"`
+			Name  string      `json:"name"`
+			Token string      `json:"token"`
+			ID    int         `json:"id"`
+		}
+		err = c.restCall(ctx, &result, "POST", "/users/me/token/"+url.PathEscape(name),
+			bytes.NewReader(b))
+		return result.Token, err
 	}
-	var result struct {
-		User  AccountData `json:"user"`
-		Name  string      `json:"name"`
-		Token string      `json:"token"`
-		ID    int         `json:"id"`
-	}
-	err = c.restCall(ctx, &result, "POST", "/users/me/token/"+url.PathEscape(name),
-		bytes.NewReader(b))
-	return result.Token, err
+
+	// SOAP
+	var resp UserTokenCreateResponse
+	err := c.Call(ctx, "mc_user_token_createRequest",
+		UserTokenCreateRequest{Auth: c.auth, TokenName: name},
+		&resp)
+	return resp.Return, err
 }
+
 func (c Client) DeleteAPIToken(ctx context.Context, name string) error {
 	return c.restCall(ctx, nil, "DELETE", "/users/me/token/"+url.PathEscape(name), nil)
 }

@@ -207,6 +207,16 @@ type LoginResponse struct {
 	Return  UserData `xml:"return"`
 }
 
+type UserTokenCreateRequest struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_user_token_create"`
+	Auth
+	TokenName string `xml:"token_name"`
+}
+type UserTokenCreateResponse struct {
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_user_token_createResponse"`
+	Return  string   `xml:"return"`
+}
+
 type IssueNoteData struct {
 	ID            *int        `xml:"id,omitempty"`
 	Reporter      AccountData `xml:"reporter,omitempty"`
