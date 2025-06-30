@@ -276,22 +276,32 @@ func (c Client) GetCategoriesForProject(ctx context.Context, projectID int) (Pro
 }
 
 func (c Client) CreateAPIToken(ctx context.Context, name string) (string, error) {
-	b, err := json.Marshal(struct {
-		Name string `json:"name"`
-	}{Name: name})
-	if err != nil {
-		return "", err
+	if c.auth.IsAPIToken() { // REST
+		b, err := json.Marshal(struct {
+			Name string `json:"name"`
+		}{Name: name})
+		if err != nil {
+			return "", err
+		}
+		var result struct {
+			User  AccountData `json:"user"`
+			Name  string      `json:"name"`
+			Token string      `json:"token"`
+			ID    int         `json:"id"`
+		}
+		err = c.restCall(ctx, &result, "POST", "/users/me/token/"+url.PathEscape(name),
+			bytes.NewReader(b))
+		return result.Token, err
 	}
-	var result struct {
-		User  AccountData `json:"user"`
-		Name  string      `json:"name"`
-		Token string      `json:"token"`
-		ID    int         `json:"id"`
-	}
-	err = c.restCall(ctx, &result, "POST", "/users/me/token/"+url.PathEscape(name),
-		bytes.NewReader(b))
-	return result.Token, err
+
+	// SOAP
+	var resp UserTokenCreateResponse
+	err := c.Call(ctx, "mc_user_token_createRequest",
+		UserTokenCreateRequest{Auth: c.auth, TokenName: name},
+		&resp)
+	return resp.Return, err
 }
+
 func (c Client) DeleteAPIToken(ctx context.Context, name string) error {
 	return c.restCall(ctx, nil, "DELETE", "/users/me/token/"+url.PathEscape(name), nil)
 }
