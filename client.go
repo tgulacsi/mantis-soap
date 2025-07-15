@@ -37,6 +37,10 @@ func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, p
 	if c == nil {
 		c = http.DefaultClient
 	}
+	if c.Transport == nil {
+		c.Transport = http.DefaultTransport
+	}
+	c.Transport = soaphlp.NewTranspport(c.Transport)
 	if c.Jar == nil {
 		var err error
 		if c.Jar, err = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List}); err != nil {
@@ -98,7 +102,9 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	if zlog.SFromContext(ctx) == nil {
 		ctx = zlog.NewSContext(ctx, c.Logger)
 	}
-	d, err := c.Caller.Call(ctx, method, bytes.NewReader(buf.Bytes()))
+	answ := bufPool.Get()
+	defer bufPool.Put(answ)
+	d, err := c.Caller.Call(ctx, answ, method, bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return fmt.Errorf("call %s: %w", buf.String(), err)
 	}
@@ -358,7 +364,9 @@ type bufferPool struct {
 }
 
 func (p *bufferPool) Get() *bytes.Buffer {
-	return p.Pool.Get().(*bytes.Buffer)
+	buf := p.Pool.Get().(*bytes.Buffer)
+	buf.Reset()
+	return buf
 }
 func (p *bufferPool) Put(b *bytes.Buffer) {
 	b.Reset()

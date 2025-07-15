@@ -213,7 +213,7 @@ type UserTokenCreateRequest struct {
 	TokenName string `xml:"token_name"`
 }
 type UserTokenCreateResponse struct {
-	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_loginResponse"`
+	XMLName xml.Name `xml:"http://futureware.biz/mantisconnect mc_user_token_createResponse"`
 	Return  string   `xml:"return"`
 }
 
