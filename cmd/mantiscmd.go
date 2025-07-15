@@ -298,8 +298,8 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 
 	FS := ff.NewFlagSet("project-version-add")
 	pVersionsAddDescription := FS.StringLong("description", "", "version description")
-	pVersionsAddReleased := FS.BoolLongDefault("released", false, "released?")
-	pVersionsAddObsolete := FS.BoolLongDefault("obsolete", false, "obsolete?")
+	pVersionsAddReleased := FS.BoolLong("released", "released?")
+	pVersionsAddObsolete := FS.BoolLong("obsolete", "obsolete?")
 	pVersionsAddDate := FS.StringLong("date", "", "date")
 	pVersionsAddCmd := &ff.Command{Name: "add", Usage: "add project version", Flags: FS,
 		Exec: func(ctx context.Context, args []string) error {
@@ -319,10 +319,11 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 		},
 	}
 
-	FS = ff.NewFlagSet("project-version-add")
+	FS = ff.NewFlagSet("project-version-update")
 	pVersionsUpdateDescription := FS.StringLong("description", "", "version description")
-	pVersionsUpdateReleased := FS.BoolLongDefault("released", false, "released?")
-	pVersionsUpdateObsolete := FS.BoolLongDefault("obsolete", false, "obsolete?")
+	var versionsUpdateReleased, versionsUpdateObsolete TriBool
+	FS.Value(0, "released", &versionsUpdateReleased, "released?")
+	FS.Value(0, "obsolete", &versionsUpdateObsolete, "obsolete?")
 	pVersionsUpdateDate := FS.StringLong("date", "", "date")
 	pVersionsUpdateCmd := &ff.Command{Name: "update",
 		Usage: "update project version <versionID> [name]",
@@ -379,8 +380,12 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			if !date.IsZero() {
 				data.DateOrder = date
 			}
-			data.Released = *pVersionsUpdateReleased
-			data.Obsolete = *pVersionsUpdateObsolete
+			if versionsUpdateReleased.IsSet() {
+				data.Released = versionsUpdateReleased.Bool()
+			}
+			if versionsUpdateObsolete.IsSet() {
+				data.Obsolete = versionsUpdateObsolete.Bool()
+			}
 			logger.Debug("ProjectVersionUpdate", "data", data)
 			return cl.ProjectVersionUpdate(ctx, data)
 		},
@@ -534,3 +539,27 @@ func addMonitors(ctx context.Context, cl *mantis.Client, issueID int, plusMonito
 	_, err = cl.IssueUpdate(ctx, issueID, issue)
 	return err
 }
+
+type TriBool struct {
+	isSet, value bool
+}
+
+func (tb *TriBool) IsBoolFlag() bool { return true }
+func (tb *TriBool) String() string {
+	if tb == nil || !tb.isSet {
+		return ""
+	} else if tb.value {
+		return "true "
+	}
+	return "false"
+}
+func (tb *TriBool) Set(s string) error {
+	var err error
+	if tb.value, err = strconv.ParseBool(s); err != nil {
+		return err
+	}
+	tb.isSet = true
+	return nil
+}
+func (tb *TriBool) IsSet() bool { return tb != nil && tb.isSet }
+func (tb *TriBool) Bool() bool  { return tb != nil && tb.value }
