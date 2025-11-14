@@ -190,7 +190,9 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			return addMonitors(ctx, cl, issueID, args[1:])
 		},
 	}
-	statusCmd := ff.Command{Name: "status", ShortHelp: "set issue's status",
+	statusCmd := ff.Command{Name: "status",
+		ShortHelp: "set issue's status",
+		Usage:     "<status> <issueID> [issueID...]",
 		Exec: func(ctx context.Context, args []string) error {
 			status, err := strconv.Atoi(args[0])
 			if err != nil {

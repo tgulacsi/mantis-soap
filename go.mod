@@ -13,6 +13,7 @@ require (
 
 require (
 	github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 // indirect
+	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/kylewolfe/soaptrip v0.0.0-20160108184655-f6f12afc06a9 // indirect

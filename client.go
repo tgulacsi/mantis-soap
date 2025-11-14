@@ -16,10 +16,12 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"strings"
 	"sync"
 	"unsafe"
 
 	"github.com/UNO-SOFT/zlog/v2"
+	"github.com/dlclark/regexp2"
 	"github.com/tgulacsi/go/soaphlp"
 	"golang.org/x/net/publicsuffix"
 )
@@ -84,6 +86,11 @@ type Client struct {
 	restURL string
 }
 
+var rEmptyXMLNode = regexp2.MustCompile(
+	"<([a-zA-Z0-9_]+)></\\1>",
+	regexp2.None,
+)
+
 func (c Client) Call(ctx context.Context, method string, request, response interface{}) error {
 	select {
 	case <-ctx.Done():
@@ -99,16 +106,31 @@ func (c Client) Call(ctx context.Context, method string, request, response inter
 	if err := xml.NewEncoder(buf).Encode(request); err != nil {
 		return fmt.Errorf("marshal %#v: %w", request, err)
 	}
+	reqXML := buf.String()
+	for {
+		length := len(reqXML)
+		var err error
+		if reqXML, err = rEmptyXMLNode.Replace(reqXML, "", -1, -1); err != nil {
+			return err
+		}
+		length2 := len(reqXML)
+		if length2 == length {
+			break
+		}
+		length = length2
+	}
 	if zlog.SFromContext(ctx) == nil {
 		ctx = zlog.NewSContext(ctx, c.Logger)
 	}
+	// fmt.Println("orig:", buf.String())
+	// fmt.Println("repl:", reqXML)
+	buf.Reset()
 	answ := bufPool.Get()
 	defer bufPool.Put(answ)
-	d, err := c.Caller.Call(ctx, answ, method, bytes.NewReader(buf.Bytes()))
+	d, err := c.Caller.Call(ctx, answ, method, strings.NewReader(reqXML))
 	if err != nil {
-		return fmt.Errorf("call %s: %w", buf.String(), err)
+		return fmt.Errorf("call %s: %w", reqXML, err)
 	}
-	buf.Reset()
 	if err := d.Decode(response); err != nil {
 		return fmt.Errorf("decode response: %w", err)
 	}
