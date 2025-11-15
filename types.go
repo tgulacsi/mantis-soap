@@ -65,10 +65,7 @@ func (t *Time) UnmarshalText(p []byte) error {
 		return nil
 	}
 	// CCYY-MM-DDThh:mm:ss[Z|(+|-)hh:mm]
-	n := len(p)
-	if n > len(timePattern) {
-		n = len(timePattern)
-	}
+	n := min(len(p), len(timePattern))
 	t2, err := time.Parse(timePattern[:n], string(p[:n]))
 	*t = Time(t2)
 	return err

@@ -91,7 +91,7 @@ var rEmptyXMLNode = regexp2.MustCompile(
 	regexp2.None,
 )
 
-func (c Client) Call(ctx context.Context, method string, request, response interface{}) error {
+func (c Client) Call(ctx context.Context, method string, request, response any) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -378,7 +378,7 @@ func (c Client) restCall(ctx context.Context, response any, method, path string,
 }
 
 var bufPool = &bufferPool{
-	Pool: sync.Pool{New: func() interface{} { return bytes.NewBuffer(make([]byte, 0, 1024)) }},
+	Pool: sync.Pool{New: func() any { return bytes.NewBuffer(make([]byte, 0, 1024)) }},
 }
 
 type bufferPool struct {

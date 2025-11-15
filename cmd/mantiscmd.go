@@ -33,7 +33,7 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			if err != nil {
 				return err
 			}
-			answer := make(map[string]interface{}, len(issueIDs))
+			answer := make(map[string]any, len(issueIDs))
 			for _, i := range issueIDs {
 				exists, err := cl.IssueExists(ctx, i)
 				if err != nil {
@@ -50,7 +50,7 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			if err != nil {
 				return err
 			}
-			answer := make(map[string]interface{}, len(issueIDs))
+			answer := make(map[string]any, len(issueIDs))
 			for _, i := range issueIDs {
 				issue, err := cl.IssueGet(ctx, i)
 				if err != nil {
@@ -82,7 +82,7 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			if err != nil {
 				return err
 			}
-			answer := make(map[string]interface{}, len(issueIDs))
+			answer := make(map[string]any, len(issueIDs))
 			for _, i := range issueIDs {
 				issue, err := cl.IssueGet(ctx, i)
 				if err != nil {
@@ -472,7 +472,7 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 }
 
 // E encodes the answer as JSON.
-func E(answer interface{}) error {
+func E(answer any) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ") // Go1.7
 	if err := enc.Encode(answer); err != nil {
