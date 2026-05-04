@@ -119,8 +119,10 @@ func (c Client) Call(ctx context.Context, method string, request, response any) 
 		}
 		length = length2
 	}
-	if zlog.SFromContext(ctx) == nil {
-		ctx = zlog.NewSContext(ctx, c.Logger)
+	logger := zlog.SFromContext(ctx)
+	if logger == nil {
+		logger = c.Logger
+		ctx = zlog.NewSContext(ctx, logger)
 	}
 	// fmt.Println("orig:", buf.String())
 	// fmt.Println("repl:", reqXML)
@@ -131,8 +133,12 @@ func (c Client) Call(ctx context.Context, method string, request, response any) 
 	if err != nil {
 		return fmt.Errorf("call %s: %w", reqXML, err)
 	}
-	if err := d.Decode(response); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+	err = d.Decode(response)
+	if logger.Enabled(ctx, slog.LevelDebug) {
+		logger.Debug("response", "answer", answ.String())
+	}
+	if err != nil {
+		return fmt.Errorf("decode response: %s: %w", answ.String(), err)
 	}
 	return nil
 }
