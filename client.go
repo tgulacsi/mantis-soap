@@ -1,4 +1,4 @@
-// Copyright 2016, 2025 Tamás Gulácsi
+// Copyright 2016, 2026 Tamás Gulácsi
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -107,6 +107,8 @@ func (c Client) Call(ctx context.Context, method string, request, response any) 
 		return fmt.Errorf("marshal %#v: %w", request, err)
 	}
 	reqXML := buf.String()
+	orig := reqXML
+	buf.Reset()
 	for {
 		length := len(reqXML)
 		var err error
@@ -114,7 +116,7 @@ func (c Client) Call(ctx context.Context, method string, request, response any) 
 			return err
 		}
 		length2 := len(reqXML)
-		if length2 == length {
+		if length2 >= length {
 			break
 		}
 		length = length2
@@ -124,21 +126,19 @@ func (c Client) Call(ctx context.Context, method string, request, response any) 
 		logger = c.Logger
 		ctx = zlog.NewSContext(ctx, logger)
 	}
+	logger.Warn("call", "orig", orig, "req", reqXML)
 	// fmt.Println("orig:", buf.String())
 	// fmt.Println("repl:", reqXML)
-	buf.Reset()
-	answ := bufPool.Get()
-	defer bufPool.Put(answ)
-	d, err := c.Caller.Call(ctx, answ, method, strings.NewReader(reqXML))
+	d, err := c.Caller.Call(ctx, buf, method, strings.NewReader(reqXML))
 	if err != nil {
 		return fmt.Errorf("call %s: %w", reqXML, err)
 	}
 	err = d.Decode(response)
 	if logger.Enabled(ctx, slog.LevelDebug) {
-		logger.Debug("response", "answer", answ.String())
+		logger.Debug("response", "answer", buf.String())
 	}
 	if err != nil {
-		return fmt.Errorf("decode response: %s: %w", answ.String(), err)
+		return fmt.Errorf("decode response: %s: %w", buf.String(), err)
 	}
 	return nil
 }
@@ -384,21 +384,21 @@ func (c Client) restCall(ctx context.Context, response any, method, path string,
 }
 
 var bufPool = &bufferPool{
-	Pool: sync.Pool{New: func() any { return bytes.NewBuffer(make([]byte, 0, 1024)) }},
+	pool: sync.Pool{New: func() any { return bytes.NewBuffer(make([]byte, 0, 1024)) }},
 }
 
 type bufferPool struct {
-	sync.Pool
+	pool sync.Pool
 }
 
 func (p *bufferPool) Get() *bytes.Buffer {
-	buf := p.Pool.Get().(*bytes.Buffer)
+	buf := p.pool.Get().(*bytes.Buffer)
 	buf.Reset()
 	return buf
 }
 func (p *bufferPool) Put(b *bytes.Buffer) {
 	b.Reset()
-	p.Pool.Put(b)
+	p.pool.Put(b)
 }
 
 // vim: set fileencoding=utf-8 noet:
