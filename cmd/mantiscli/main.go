@@ -1,6 +1,6 @@
 // Copyright 2017, 2025 Tamás Gulácsi. All rights reserved.
 //
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 //go:generate go get github.com/hooklift/gowsdl/cmd/gowsdl
 //go:generate wget -O mantis.wsdl.raw -q "https://www.unosoft.hu/mantis/kobe/api/soap/mantisconnect.php?wsdl"
