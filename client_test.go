@@ -1,6 +1,6 @@
 // Copyright 2013 Tamás Gulácsi
 //
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EUPL-1.2
 
 package mantis
 
