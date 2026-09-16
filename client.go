@@ -26,10 +26,6 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
-var logger = slog.Default()
-
-func SetLogger(lgr *slog.Logger) { logger = lgr }
-
 func NewWithHTTPClient(ctx context.Context, c *http.Client, baseURL, username, password string) (Client, error) {
 	select {
 	case <-ctx.Done():
@@ -80,10 +76,9 @@ func New(ctx context.Context, baseURL, username, password string) (Client, error
 type Client struct {
 	soaphlp.Caller
 	httpClient *http.Client
-	*slog.Logger
-	User    AccountData
-	auth    Auth
-	restURL string
+	User       AccountData
+	auth       Auth
+	restURL    string
 }
 
 var rEmptyXMLNode = regexp2.MustCompile(
@@ -122,11 +117,9 @@ func (c Client) Call(ctx context.Context, method string, request, response any) 
 		length = length2
 	}
 	logger := zlog.SFromContext(ctx)
-	if logger == nil {
-		logger = c.Logger
-		ctx = zlog.NewSContext(ctx, logger)
+	if logger.Enabled(ctx, slog.LevelDebug) {
+		logger.Debug("call", "orig", orig, "req", reqXML)
 	}
-	logger.Warn("call", "orig", orig, "req", reqXML)
 	// fmt.Println("orig:", buf.String())
 	// fmt.Println("repl:", reqXML)
 	d, err := c.Caller.Call(ctx, buf, method, strings.NewReader(reqXML))

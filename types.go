@@ -82,11 +82,10 @@ func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	pr, pw := io.Pipe()
 	go func() {
 		w := base64.NewEncoder(base64.StdEncoding, pw)
-		n, err := io.Copy(w, r.Reader)
+		_, err := io.Copy(w, r.Reader)
 		if err != nil {
 			err = fmt.Errorf("base64-encode: %w", err)
 		}
-		logger.Debug("copied", "bytes", n, "error", err)
 		if closeErr := w.Close(); closeErr != nil && err == nil {
 			err = fmt.Errorf("close base64-encoder: %w", closeErr)
 		}
@@ -97,7 +96,6 @@ func (r Reader) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	var err error
 	for {
 		n, err = pr.Read(p)
-		logger.Debug("read", "bytes", n, "error", err)
 		if n > 0 {
 			if encErr := e.EncodeToken(xml.CharData(p[:n])); encErr != nil && err == nil {
 				err = encErr
