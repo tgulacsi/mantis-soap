@@ -1,4 +1,4 @@
-// Copyright 2017, 2025 Tamás Gulácsi. All rights reserved.
+// Copyright 2017, 2026 Tamás Gulácsi. All rights reserved.
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -7,28 +7,26 @@ package mantiscmd
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/peterbourgon/ff/v4"
+	"github.com/UNO-SOFT/cli"
+	"github.com/UNO-SOFT/zlog/v2"
 	"github.com/tgulacsi/mantis-soap"
 	"github.com/titanous/json5"
 	"github.com/zRedShift/mimemagic"
 )
 
-var logger = slog.Default()
-
-func SetLogger(lgr *slog.Logger) { logger = lgr }
-
 // App returns an *ff.Command usable as app.
-func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
-	existCmd := &ff.Command{Name: "exist", Usage: "check the existence of issues",
-		Exec: func(ctx context.Context, args []string) error {
+func App(cl *mantis.Client) (*cli.Command, *flag.FlagSet) {
+	existCmd := &cli.Command{Name: "exist", Usage: "check the existence of issues",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			issueIDs, err := toInts(args)
 			if err != nil {
 				return err
@@ -44,8 +42,9 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			return E(answer)
 		},
 	}
-	getIssuesCmd := &ff.Command{Name: "get", Usage: "get",
-		Exec: func(ctx context.Context, args []string) error {
+	getIssuesCmd := &cli.Command{Name: "get", Usage: "get",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			issueIDs, err := toInts(args)
 			if err != nil {
 				return err
@@ -61,8 +60,9 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			return E(answer)
 		},
 	}
-	searchIssuesCmd := &ff.Command{Name: "search", Usage: "search",
-		Exec: func(ctx context.Context, args []string) error {
+	searchIssuesCmd := &cli.Command{Name: "search", Usage: "search",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			var filter mantis.FilterSearchData
 			if err := json5.Unmarshal([]byte(strings.Join(args, " ")), &filter); err != nil {
 				return fmt.Errorf("unmarshal %q as %#v: %w", args, filter, err)
@@ -76,8 +76,9 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 		},
 	}
 
-	getMonitorsCmd := &ff.Command{Name: "monitors", Usage: "get monitors",
-		Exec: func(ctx context.Context, args []string) error {
+	getMonitorsCmd := &cli.Command{Name: "monitors", Usage: "get monitors",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			issueIDs, err := toInts(args)
 			if err != nil {
 				return err
@@ -94,8 +95,9 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 		},
 	}
 
-	addAttachmentCmd := &ff.Command{Name: "attach", Usage: "attach a file to the issue",
-		Exec: func(ctx context.Context, args []string) error {
+	addAttachmentCmd := &cli.Command{Name: "attach", Usage: "attach a file to the issue",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
@@ -106,6 +108,7 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			if err != nil {
 				return err
 			}
+			logger := zlog.SFromContext(ctx)
 			for _, at := range issue.Attachments {
 				if at.FileName == fn && at.Size > 0 {
 					logger.Info("Attachment already there.", "file", fn)
@@ -132,8 +135,9 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 		},
 	}
 
-	issueListAttachmentsCmd := &ff.Command{Name: "attachments", Usage: "list attachments",
-		Exec: func(ctx context.Context, args []string) error {
+	issueListAttachmentsCmd := &cli.Command{Name: "attachments", Usage: "list attachments",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
@@ -145,8 +149,9 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			return E(issue.Attachments)
 		},
 	}
-	issueDownloadAttachmentCmd := &ff.Command{Name: "download", Usage: "download attachments of the issue",
-		Exec: func(ctx context.Context, args []string) error {
+	issueDownloadAttachmentCmd := &cli.Command{Name: "download", Usage: "download attachments of the issue",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
@@ -164,25 +169,26 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 		},
 	}
 
-	attachmentAddCmd := ff.Command{Name: "add", ShortHelp: "add attachment",
+	attachmentAddCmd := cli.Command{Name: "add", Summary: "add attachment",
 		Exec: addAttachmentCmd.Exec,
 	}
 
-	attachmentListCmd := ff.Command{Name: "list", ShortHelp: "list attachments",
+	attachmentListCmd := cli.Command{Name: "list", Summary: "list attachments",
 		Exec: issueListAttachmentsCmd.Exec,
 	}
 
-	attachmentDownloadCmd := ff.Command{Name: "download", ShortHelp: "download attachments",
+	attachmentDownloadCmd := cli.Command{Name: "download", Summary: "download attachments",
 		Exec: issueDownloadAttachmentCmd.Exec,
 	}
 
-	attachmentCmd := ff.Command{Name: "attachment", ShortHelp: "do sth with attachments",
+	attachmentCmd := cli.Command{Name: "attachment", Summary: "do sth with attachments",
 		Exec:        attachmentListCmd.Exec,
-		Subcommands: []*ff.Command{&attachmentAddCmd, &attachmentListCmd, &attachmentDownloadCmd},
+		SubCommands: []*cli.Command{&attachmentAddCmd, &attachmentListCmd, &attachmentDownloadCmd},
 	}
 
-	addMonitorsCmd := &ff.Command{Name: "add", Usage: "add monitor",
-		Exec: func(ctx context.Context, args []string) error {
+	addMonitorsCmd := &cli.Command{Name: "add", Usage: "add monitor",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
@@ -190,10 +196,11 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			return addMonitors(ctx, cl, issueID, args[1:])
 		},
 	}
-	statusCmd := ff.Command{Name: "status",
-		ShortHelp: "set issue's status",
-		Usage:     "<status> <issueID> [issueID...]",
-		Exec: func(ctx context.Context, args []string) error {
+	statusCmd := cli.Command{Name: "status",
+		Summary: "set issue's status",
+		Usage:   "<status> <issueID> [issueID...]",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			status, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
@@ -227,8 +234,8 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 		},
 	}
 
-	issueCmd := &ff.Command{Name: "issue", Usage: "do sth on issues",
-		Subcommands: []*ff.Command{
+	issueCmd := &cli.Command{Name: "issue", Usage: "do sth on issues",
+		SubCommands: []*cli.Command{
 			existCmd, getIssuesCmd, searchIssuesCmd,
 			getMonitorsCmd, addMonitorsCmd,
 			addAttachmentCmd, issueListAttachmentsCmd, issueDownloadAttachmentCmd,
@@ -236,9 +243,10 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 		},
 	}
 
-	addNoteCmd := &ff.Command{
+	addNoteCmd := &cli.Command{
 		Name: "add", Usage: "add a note to an issue",
-		Exec: func(ctx context.Context, args []string) error {
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			issueID, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
@@ -251,16 +259,18 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			if err != nil {
 				return err
 			}
+			logger := zlog.SFromContext(ctx)
 			logger.Info("added", "note", noteID)
 			return nil
 		},
 	}
-	noteCmd := &ff.Command{Name: "note", Usage: "do sth with notes",
-		Subcommands: []*ff.Command{addNoteCmd},
+	noteCmd := &cli.Command{Name: "note", Usage: "do sth with notes",
+		SubCommands: []*cli.Command{addNoteCmd},
 	}
 
-	listProjectsCmd := &ff.Command{Name: "list", Usage: "list projects",
-		Exec: func(ctx context.Context, args []string) error {
+	listProjectsCmd := &cli.Command{Name: "list", Usage: "list projects",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			projects, err := cl.ProjectsGetUserAccessible(ctx)
 			if err != nil {
 				return err
@@ -285,8 +295,8 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 	}
 
 	var projectID int
-	pVersionsListCmd := &ff.Command{Name: "list", Usage: "list project versions <projectID>",
-		Exec: func(ctx context.Context, args []string) error {
+	pVersionsListCmd := &cli.Command{Name: "list", Usage: "list project versions <projectID>",
+		Exec: func(ctx context.Context, state *cli.State) error {
 			versions, err := cl.ProjectVersionsList(ctx, projectID)
 			enc := json.NewEncoder(os.Stdout)
 			for _, v := range versions {
@@ -298,13 +308,14 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 		},
 	}
 
-	FS := ff.NewFlagSet("project-version-add")
-	pVersionsAddDescription := FS.StringLong("description", "", "version description")
-	pVersionsAddReleased := FS.BoolLong("released", "released?")
-	pVersionsAddObsolete := FS.BoolLong("obsolete", "obsolete?")
-	pVersionsAddDate := FS.StringLong("date", "", "date")
-	pVersionsAddCmd := &ff.Command{Name: "add", Usage: "add project version", Flags: FS,
-		Exec: func(ctx context.Context, args []string) error {
+	FS := flag.NewFlagSet("project-version-add", flag.ContinueOnError)
+	pVersionsAddDescription := FS.String("description", "", "version description")
+	pVersionsAddReleased := FS.Bool("released", false, "released?")
+	pVersionsAddObsolete := FS.Bool("obsolete", false, "obsolete?")
+	pVersionsAddDate := FS.String("date", "", "date")
+	pVersionsAddCmd := &cli.Command{Name: "add", Usage: "add project version", Flags: FS,
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			if len(args) == 0 {
 				return fmt.Errorf("version name is required")
 			}
@@ -321,16 +332,17 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 		},
 	}
 
-	FS = ff.NewFlagSet("project-version-update")
-	pVersionsUpdateDescription := FS.StringLong("description", "", "version description")
+	FS = flag.NewFlagSet("project-version-update", flag.ContinueOnError)
+	pVersionsUpdateDescription := FS.String("description", "", "version description")
 	var versionsUpdateReleased, versionsUpdateObsolete TriBool
-	FS.Value(0, "released", &versionsUpdateReleased, "released?")
-	FS.Value(0, "obsolete", &versionsUpdateObsolete, "obsolete?")
-	pVersionsUpdateDate := FS.StringLong("date", "", "date")
-	pVersionsUpdateCmd := &ff.Command{Name: "update",
+	FS.Var(&versionsUpdateReleased, "released", "released?")
+	FS.Var(&versionsUpdateObsolete, "obsolete", "obsolete?")
+	pVersionsUpdateDate := FS.String("date", "", "date")
+	pVersionsUpdateCmd := &cli.Command{Name: "update",
 		Usage: "update project version <versionID> [name]",
 		Flags: FS,
-		Exec: func(ctx context.Context, args []string) error {
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			if len(args) == 0 {
 				return fmt.Errorf("versionID is required")
 			}
@@ -388,14 +400,16 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			if versionsUpdateObsolete.IsSet() {
 				data.Obsolete = versionsUpdateObsolete.Bool()
 			}
+			logger := zlog.SFromContext(ctx)
 			logger.Debug("ProjectVersionUpdate", "data", data)
 			return cl.ProjectVersionUpdate(ctx, data)
 		},
 	}
 
-	pVersionsDeleteCmd := &ff.Command{Name: "delete",
+	pVersionsDeleteCmd := &cli.Command{Name: "delete",
 		Usage: "delete project version <versionID>",
-		Exec: func(ctx context.Context, args []string) error {
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			if len(args) == 0 {
 				return fmt.Errorf("versionID is required")
 			}
@@ -407,22 +421,23 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 		},
 	}
 
-	FS = ff.NewFlagSet("projects")
-	FS.IntVar(&projectID, 0, "project", 0, "project id")
-	projectVersionsCmd := &ff.Command{Name: "versions", Usage: "do sth with versions",
+	FS = flag.NewFlagSet("projects", flag.ContinueOnError)
+	FS.IntVar(&projectID, "project", 0, "project id")
+	projectVersionsCmd := &cli.Command{Name: "versions", Usage: "do sth with versions",
 		Flags:       FS,
-		Subcommands: []*ff.Command{pVersionsListCmd, pVersionsAddCmd, pVersionsDeleteCmd, pVersionsUpdateCmd},
+		SubCommands: []*cli.Command{pVersionsListCmd, pVersionsAddCmd, pVersionsDeleteCmd, pVersionsUpdateCmd},
 	}
 
-	projectsCmd := &ff.Command{Name: "project", Usage: "do sth with projects",
-		Subcommands: []*ff.Command{listProjectsCmd, projectVersionsCmd},
+	projectsCmd := &cli.Command{Name: "project", Usage: "do sth with projects",
+		SubCommands: []*cli.Command{listProjectsCmd, projectVersionsCmd},
 	}
 
-	FS = ff.NewFlagSet("project-list-users")
-	usersAccessLevel := FS.IntLong("access-level", 10, "access level threshold")
-	listUsersCmd := &ff.Command{Name: "list", Flags: FS,
-		ShortHelp: "user list [projectID]",
-		Exec: func(ctx context.Context, args []string) error {
+	FS = flag.NewFlagSet("project-list-users", flag.ContinueOnError)
+	usersAccessLevel := FS.Int("access-level", 10, "access level threshold")
+	listUsersCmd := &cli.Command{Name: "list", Flags: FS,
+		Summary: "user list [projectID]",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			projectID := 1
 			if len(args) != 0 {
 				var err error
@@ -437,18 +452,20 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			return E(users)
 		},
 	}
-	deleteAPITokenCmd := ff.Command{Name: "delete",
-		Usage:     "delete <tokenName>",
-		ShortHelp: "delete token",
-		Exec: func(ctx context.Context, args []string) error {
+	deleteAPITokenCmd := cli.Command{Name: "delete",
+		Usage:   "delete <tokenName>",
+		Summary: "delete token",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			return cl.DeleteAPIToken(ctx, args[0])
 		},
 	}
-	createAPITokenCmd := ff.Command{Name: "token",
+	createAPITokenCmd := cli.Command{Name: "token",
 		Usage:       "token [tokenName]",
-		ShortHelp:   "create a new API token with the given name",
-		Subcommands: []*ff.Command{&deleteAPITokenCmd},
-		Exec: func(ctx context.Context, args []string) error {
+		Summary:     "create a new API token with the given name",
+		SubCommands: []*cli.Command{&deleteAPITokenCmd},
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			var name string
 			if len(args) != 0 {
 				name = args[0]
@@ -458,14 +475,14 @@ func App(cl *mantis.Client) (*ff.Command, *ff.FlagSet) {
 			return err
 		},
 	}
-	usersCmd := &ff.Command{Name: "user", Usage: "do sth with users",
-		Subcommands: []*ff.Command{listUsersCmd, &createAPITokenCmd},
+	usersCmd := &cli.Command{Name: "user", Usage: "do sth with users",
+		SubCommands: []*cli.Command{listUsersCmd, &createAPITokenCmd},
 	}
 
-	FS = ff.NewFlagSet("mantiscli")
-	return &ff.Command{Name: "mantiscli", Flags: FS,
+	FS = flag.NewFlagSet("mantiscli", flag.ContinueOnError)
+	return &cli.Command{Name: "mantiscli", Flags: FS,
 		Usage: "Mantis Command-Line Interface",
-		Subcommands: []*ff.Command{
+		SubCommands: []*cli.Command{
 			&attachmentCmd,
 			issueCmd, noteCmd, projectsCmd, usersCmd},
 	}, FS
@@ -476,8 +493,7 @@ func E(answer any) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ") // Go1.7
 	if err := enc.Encode(answer); err != nil {
-		logger.Error("ERROR encoding answer", "error", err)
-		return err
+		return fmt.Errorf("encoding answer: %w", err)
 	}
 	return nil
 }
@@ -523,6 +539,7 @@ func addMonitors(ctx context.Context, cl *mantis.Client, issueID int, plusMonito
 		}
 		u, ok := uM[p]
 		if !ok {
+			logger := zlog.SFromContext(ctx)
 			logger.Info("unknown user", "plusMonitor", p)
 			continue
 		}

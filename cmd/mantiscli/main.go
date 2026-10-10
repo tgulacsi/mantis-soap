@@ -1,4 +1,4 @@
-// Copyright 2017, 2025 Tamás Gulácsi. All rights reserved.
+// Copyright 2017, 2026 Tamás Gulácsi. All rights reserved.
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -17,15 +17,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"golang.org/x/term"
 
+	"github.com/UNO-SOFT/cli"
 	"github.com/UNO-SOFT/zlog/v2"
-	"github.com/peterbourgon/ff/v4"
-	"github.com/peterbourgon/ff/v4/ffhelp"
 	"github.com/tgulacsi/go/globalctx"
 	tterm "github.com/tgulacsi/go/term"
 	"github.com/tgulacsi/mantis-soap"
@@ -48,15 +48,15 @@ func Main() error {
 	var cl mantis.Client
 
 	app, FS := mantiscmd.App(&cl)
-	FS.Value('v', "verbose", &verbose, "verbose logging")
-	URL := FS.StringLong("mantis", "", "Mantis URL")
-	username := FS.String('u', "user", os.Getenv("USER"), "Mantis user name")
-	passwordEnv := FS.StringLong("password-env", "MC_PASSWORD", "Environment variable's name for the password")
-	configFile := FS.String('c', "config", os.ExpandEnv("/home/$USER/.config/mantiscli.json"), "config file with the stored password")
+	FS.Var(&verbose, "verbose", "verbose logging")
+	URL := FS.String("mantis", "", "Mantis URL")
+	username := FS.String("user", os.Getenv("USER"), "Mantis user name")
+	passwordEnv := FS.String("password-env", "MC_PASSWORD", "Environment variable's name for the password")
+	configFile := FS.String("config", os.ExpandEnv("/home/$USER/.config/mantiscli.json"), "config file with the stored password")
 
-	if err := app.Parse(os.Args[1:]); err != nil {
-		ffhelp.Command(app).WriteTo(os.Stderr)
-		if errors.Is(err, ff.ErrHelp) {
+	if err := cli.Parse(app, os.Args[1:]); err != nil {
+		cli.PrintHelp(os.Stderr, app)
+		if errors.Is(err, flag.ErrHelp) {
 			return nil
 		}
 		return err
@@ -97,10 +97,6 @@ func Main() error {
 		cancel()
 		return err
 	}
-	if verbose > 0 {
-		cl.Logger = logger.WithGroup("mantis-soap")
-		mantis.SetLogger(cl.Logger)
-	}
 	if *configFile != "" {
 		logger := logger.With("file", configFile)
 		_ = os.MkdirAll(filepath.Dir(*configFile), 0700)
@@ -127,7 +123,7 @@ func Main() error {
 	}
 	//logger.Info("main", "args", args)
 
-	return app.Run(ctx)
+	return cli.Run(ctx, app, nil)
 }
 
 type Config struct {

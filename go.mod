@@ -1,9 +1,9 @@
 module github.com/tgulacsi/mantis-soap
 
 require (
+	github.com/UNO-SOFT/cli v0.0.0-20261009074406-95b18dbd4953
 	github.com/UNO-SOFT/zlog v0.8.6
 	github.com/dlclark/regexp2 v1.11.5
-	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/tgulacsi/go v0.28.4
 	github.com/titanous/json5 v1.0.0
 	github.com/zRedShift/mimemagic v1.2.0
@@ -21,9 +21,7 @@ require (
 	golang.org/x/text v0.25.0 // indirect
 )
 
-go 1.23.0
-
-toolchain go1.24.0
+go 1.27.0
 
 // replace github.com/tgulacsi/go => ../go
 
